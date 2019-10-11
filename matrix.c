@@ -1,9 +1,16 @@
 #include<stdio.h>
 #include<float.h>
 #include<math.h>
+#include<Windows.h>
 
 #include "./include/matrix.h"
 #include "./include/borland.h"
+
+float *convVec3toVec4(const float in[3], float out[4]) {
+	memcpy_s(out, 4 * sizeof(float), in, 3 * sizeof(float));
+	out[3] = 1.0F;
+	return out;
+}
 
 float dot2(const float a[2], const float b[2]) {
 	return a[0] * b[0] + a[1] * b[1];

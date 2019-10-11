@@ -5,6 +5,8 @@
 
 #define COPY_ARY(dest, src) memcpy_s(dest, sizeof(dest), src, sizeof(src))
 
+float *convVec3toVec4(const float in[3], float out[4]);
+
 float dot2(const float a[2], const float b[2]);
 float dot3(const float a[3], const float b[3]);
 float dot4(const float a[4], const float b[4]);

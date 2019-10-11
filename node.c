@@ -74,6 +74,27 @@ void drawNode(Node *node) {
   popTransformation();
 }
 
+float (*getNodeTransformation(Node node, float out[4][4]))[4] {
+  float temp[2][4][4];
+  genTranslationMat4(node.position[0], node.position[1], node.position[2], temp[0]);
+  genTranslationMat4(node.angle[0], node.angle[1], node.angle[2], temp[1]);
+  mulMat4(temp[0], temp[1], out);
+  return out;
+}
+
+float (*getWorldTransfomration(Node node, float out[4][4]))[4] {
+  Node *current = &node;
+  genIdentityMat4(out);
+  while(current) {
+    float temp[2][4][4];
+    memcpy_s(temp[0], sizeof(temp[0]), out, sizeof(temp[0]));
+    getNodeTransformation(*current, temp[1]);
+    mulMat4(temp[1], temp[0], out);
+    current = current->parent;
+  }
+  return out;
+}
+
 int testCollision(Node a, Node b) {
   return (a.aabb[0][0] <= b.aabb[0][1] && a.aabb[0][1] >= b.aabb[0][0]) &&
          (a.aabb[1][0] <= b.aabb[1][1] && a.aabb[1][1] >= b.aabb[1][0]) &&

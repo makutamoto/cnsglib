@@ -47,6 +47,8 @@ Node initNodeUI(const char *id, Image image, unsigned char color);
 void discardNode(Node node);
 
 void drawNode(Node *node);
+float (*getNodeTransformation(Node node, float out[4][4]))[4];
+float (*getWorldTransfomration(Node node, float out[4][4]))[4];
 int testCollision(Node a, Node b);
 int testCollisionPolygonPolygon(Node a, Node b);
 void addIntervalEventNode(Node *node, unsigned int milliseconds, void (*callback)(Node*));

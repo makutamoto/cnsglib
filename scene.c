@@ -58,7 +58,18 @@ void drawScene(Scene *scene) {
   float elapsed;
   IntervalEventScene *intervalScene;
   clearTransformation();
-  genLookAtMat4(scene->camera.position, scene->camera.target, scene->camera.worldUp, lookAt);
+  if(scene->camera.parent) {
+    float temp[4];
+    float cameraParent[4][4];
+    float cameraPosition[4];
+    float cameraTarget[4];
+    getWorldTransfomration(*scene->camera.parent, cameraParent);
+    mulMat4Vec4(cameraParent, convVec3toVec4(scene->camera.position, temp), cameraPosition);
+    mulMat4Vec4(cameraParent, convVec3toVec4(scene->camera.target, temp), cameraTarget);
+    genLookAtMat4(cameraPosition, cameraTarget, scene->camera.worldUp, lookAt);
+  } else {
+    genLookAtMat4(scene->camera.position, scene->camera.target, scene->camera.worldUp, lookAt);
+  }
   genPerspectiveMat4(scene->camera.fov, scene->camera.nearLimit, scene->camera.farLimit, scene->camera.aspect, projection);
   mulMat4(projection, lookAt, camera);
   clearBuffer(scene->background);

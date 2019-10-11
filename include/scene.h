@@ -15,6 +15,7 @@ typedef struct {
   float nearLimit;
   float farLimit;
   float aspect;
+  Node *parent;
 } Camera;
 
 typedef struct {
