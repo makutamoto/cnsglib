@@ -19,10 +19,10 @@ typedef struct {
 } Camera;
 
 typedef struct {
+  float acceleration[3];
   Vector nodes;
   unsigned char background;
   Camera camera;
-  clock_t previousClock;
   Vector intervalEvents;
 } Scene;
 
@@ -36,8 +36,8 @@ Camera initCamera(float x, float y, float z, float aspect);
 
 Scene initScene(void);
 void addIntervalEventScene(Scene *scene, unsigned int milliseconds, void (*callback)(Scene*));
-void resetSceneClock(Scene *scene);
 void drawScene(Scene *scene);
+void updateScene(Scene *scene, float elapsed);
 void discardScene(Scene *scene);
 
 #endif

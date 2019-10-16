@@ -26,6 +26,7 @@ Camera initCamera(float x, float y, float z, float aspect) {
 Scene initScene(void) {
   Scene scene;
   memset(&scene, 0, sizeof(Scene));
+  scene.acceleration[1] = -98.0F;
   scene.nodes = initVector();
   scene.camera = initCamera(0.0F, 0.0F, 0.0F, 1.0F);
   return scene;
@@ -39,24 +40,11 @@ void addIntervalEventScene(Scene *scene, unsigned int milliseconds, void (*callb
   push(&scene->intervalEvents, interval);
 }
 
-void resetSceneClock(Scene *scene) {
-  IntervalEventScene *interval;
-  resetIteration(&scene->intervalEvents);
-  interval = nextData(&scene->intervalEvents);
-  while(interval) {
-    interval->begin = clock();
-    interval = nextData(&scene->intervalEvents);
-  }
-  scene->previousClock = clock();
-}
-
 void drawScene(Scene *scene) {
   Node *node;
   float lookAt[4][4];
   float projection[4][4];
   float camera[4][4];
-  float elapsed;
-  IntervalEventScene *intervalScene;
   clearTransformation();
   if(scene->camera.parent) {
     float temp[4];
@@ -83,14 +71,34 @@ void drawScene(Scene *scene) {
     node->collisionFlags = 0;
     node = nextData(&scene->nodes);
   }
+  flushBuffer();
+}
+
+static void impulseNodes(Node *nodeA, float normal[3], float point[3]) {
+  float temp[2][3];
+  float velocity[3];
+  float impulse[3];
+  float impulseNumerator, impulseDenominator;
+  addVec3(nodeA->velocity, cross(nodeA->angVelocity, point, temp[0]), velocity);
+  impulseNumerator = - (1.0F + 0.5F) * dot3(velocity, normal);
+  impulseDenominator = 1.0F / nodeA->shape.mass + dot3(cross(mulMat3Vec3(nodeA->shape.inverseInertia, cross(point, normal, temp[0]), temp[1]), point, temp[0]), normal);
+  mulVec3ByScalar(normal, impulseNumerator / impulseDenominator, impulse);
+  addVec3(nodeA->velocity, divVec3ByScalar(impulse, nodeA->shape.mass, temp[0]), nodeA->velocity);
+  addVec3(nodeA->angMomentum, cross(point, impulse, temp[0]), nodeA->angMomentum);
+  mulMat3Vec3(nodeA->shape.inverseInertia, nodeA->angMomentum, nodeA->angVelocity);
+}
+
+void updateScene(Scene *scene, float elapsed) {
+  Node *node;
+  IntervalEventScene *intervalScene;
   resetIteration(&scene->nodes);
   node = nextData(&scene->nodes);
-  elapsed = (float)(clock() - scene->previousClock) / CLOCKS_PER_SEC;
-  scene->previousClock = clock();
   while(node) {
     float x[3];
-    mulVec3ByScalar(node->velocity, elapsed, x);
-    addVec3(node->position, x, node->position);
+    if(node->isPhysicsEnabled) {
+      mulVec3ByScalar(scene->acceleration, elapsed, x);
+      addVec3(node->velocity, x, node->velocity);
+    }
     if(node->collisionMaskActive || node->collisionMaskPassive) {
       Node *collisionTarget;
       VectorItem *item = scene->nodes.currentItem;
@@ -101,7 +109,21 @@ void drawScene(Scene *scene) {
         unsigned int flags = flagsA | flagsB;
         if(flags) {
           if(testCollision(*node, *collisionTarget)) {
-            if(testCollisionPolygonPolygon(*node, *collisionTarget)) {
+            Vector points = initVector();
+            Vector normals = initVector();
+            if(testCollisionPolygonPolygon(*node, *collisionTarget, &normals, &points)) {
+              float (*point)[3], (*normal)[3];
+              float temp[3][3];
+              resetIteration(&points);
+              resetIteration(&normals);
+              point = nextData(&points);
+              normal = nextData(&normals);
+              while(point) {
+                if(node->isPhysicsEnabled) impulseNodes(node, normal[1], point[0]);
+                if(collisionTarget->isPhysicsEnabled) impulseNodes(collisionTarget, normal[0], point[1]);
+                point = nextData(&points);
+                normal = nextData(&normals);
+              }
               push(&node->collisionTargets, collisionTarget);
               push(&collisionTarget->collisionTargets, node);
               node->collisionFlags |= flags;
@@ -113,6 +135,10 @@ void drawScene(Scene *scene) {
       }
       scene->nodes.currentItem = item;
     }
+    mulVec3ByScalar(node->velocity, elapsed, x);
+    addVec3(node->position, x, node->position);
+    mulVec3ByScalar(node->angVelocity, elapsed, x);
+    addVec3(node->angle, x, node->angle);
     node = nextData(&scene->nodes);
   }
   resetIteration(&scene->nodes);
@@ -157,7 +183,6 @@ void drawScene(Scene *scene) {
     }
     intervalScene = nextData(&scene->intervalEvents);
   }
-  flushBuffer();
 }
 
 void discardScene(Scene *scene) {

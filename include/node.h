@@ -9,14 +9,20 @@
 typedef struct {
 	Vector indices;
 	Vector vertices;
+	Vector normals;
+	Vector normalIndices;
 	Vector uv;
 	Vector uvIndices;
+	float mass;
+	float inertia[3][3];
+	float inverseInertia[3][3];
 } Shape;
 
 typedef struct _Node {
 	char id[10];
 	float velocity[3];
-	float angVelocity;
+	float angVelocity[3];
+	float angMomentum[3];
 	float position[3];
 	float angle[3];
 	float scale[3];
@@ -32,6 +38,7 @@ typedef struct _Node {
 	struct _Node *parent;
 	Vector children;
 	int (*behaviour)(struct _Node*);
+	BOOL isPhysicsEnabled;
 	BOOL isInterface;
 	void *data;
 }	Node;
@@ -50,9 +57,10 @@ void drawNode(Node *node);
 float (*getNodeTransformation(Node node, float out[4][4]))[4];
 float (*getWorldTransfomration(Node node, float out[4][4]))[4];
 int testCollision(Node a, Node b);
-int testCollisionPolygonPolygon(Node a, Node b);
+int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points);
 void addIntervalEventNode(Node *node, unsigned int milliseconds, void (*callback)(Node*));
 
+Shape initShape(float mass);
 Shape initShapePlane(float width, float height, unsigned char color);
 Shape initShapePlaneInv(float width, float height, unsigned char color);
 Shape initShapeBox(float width, float height, float depth, unsigned char color);
