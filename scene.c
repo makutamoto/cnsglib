@@ -81,11 +81,11 @@ static void impulseNodes(Node *nodeA, float normal[3], float point[3]) {
   float impulseNumerator, impulseDenominator;
   addVec3(nodeA->velocity, cross(nodeA->angVelocity, point, temp[0]), velocity);
   impulseNumerator = - (1.0F + 0.5F) * dot3(velocity, normal);
-  impulseDenominator = 1.0F / nodeA->shape.mass + dot3(cross(mulMat3Vec3(nodeA->shape.inverseInertia, cross(point, normal, temp[0]), temp[1]), point, temp[0]), normal);
+  impulseDenominator = 1.0F / nodeA->shape.mass + dot3(cross(mulMat3Vec3(nodeA->shape.worldInverseInertia, cross(point, normal, temp[0]), temp[1]), point, temp[0]), normal);
   mulVec3ByScalar(normal, impulseNumerator / impulseDenominator, impulse);
   addVec3(nodeA->velocity, divVec3ByScalar(impulse, nodeA->shape.mass, temp[0]), nodeA->velocity);
   addVec3(nodeA->angMomentum, cross(point, impulse, temp[0]), nodeA->angMomentum);
-  mulMat3Vec3(nodeA->shape.inverseInertia, nodeA->angMomentum, nodeA->angVelocity);
+  mulMat3Vec3(nodeA->shape.worldInverseInertia, nodeA->angMomentum, nodeA->angVelocity);
 }
 
 void updateScene(Scene *scene, float elapsed) {
@@ -94,11 +94,26 @@ void updateScene(Scene *scene, float elapsed) {
   resetIteration(&scene->nodes);
   node = nextData(&scene->nodes);
   while(node) {
-    float x[3];
-    if(node->isPhysicsEnabled) {
-      mulVec3ByScalar(scene->acceleration, elapsed, x);
-      addVec3(node->velocity, x, node->velocity);
-    }
+    float temp[3];
+    float tempMat4[4][4];
+    float tempMat3[2][3][3];
+    float orientation[3][3];
+    if(node->isPhysicsEnabled) addVec3(node->force, mulVec3ByScalar(scene->acceleration, node->shape.mass, temp), node->force);
+    addVec3(node->position, mulVec3ByScalar(node->velocity, elapsed, temp), node->position);
+    genRotationMat4(node->angle[0], node->angle[1], node->angle[2], tempMat4);
+    convMat4toMat3(tempMat4, orientation);
+    genSkewMat3(node->angVelocity, tempMat3[0]);
+    addMat3(orientation, mulMat3ByScalar(mulMat3(tempMat3[0], orientation, tempMat3[1]), elapsed, tempMat3[0]), tempMat3[1]);
+    orthogonalize3(tempMat3[1], orientation);
+    getAngleFromMat3(orientation, node->angle);
+    addVec3(node->velocity, mulVec3ByScalar(node->force, elapsed / node->shape.mass, temp), node->velocity);
+    addVec3(node->angMomentum, mulVec3ByScalar(node->torque, elapsed, temp), node->angMomentum);
+    mulMat3(orientation, mulMat3(node->shape.inverseInertia, transposeMat3(orientation, tempMat3[0]), tempMat3[1]), node->shape.worldInverseInertia);
+    mulMat3Vec3(node->shape.worldInverseInertia, node->angMomentum, node->angVelocity);
+    node = nextData(&scene->nodes);
+  }
+  node = nextData(&scene->nodes);
+  while(node) {
     if(node->collisionMaskActive || node->collisionMaskPassive) {
       Node *collisionTarget;
       VectorItem *item = scene->nodes.currentItem;
@@ -113,7 +128,6 @@ void updateScene(Scene *scene, float elapsed) {
             Vector normals = initVector();
             if(testCollisionPolygonPolygon(*node, *collisionTarget, &normals, &points)) {
               float (*point)[3], (*normal)[3];
-              float temp[3][3];
               resetIteration(&points);
               resetIteration(&normals);
               point = nextData(&points);
@@ -135,16 +149,14 @@ void updateScene(Scene *scene, float elapsed) {
       }
       scene->nodes.currentItem = item;
     }
-    mulVec3ByScalar(node->velocity, elapsed, x);
-    addVec3(node->position, x, node->position);
-    mulVec3ByScalar(node->angVelocity, elapsed, x);
-    addVec3(node->angle, x, node->angle);
     node = nextData(&scene->nodes);
   }
   resetIteration(&scene->nodes);
   node = previousData(&scene->nodes);
   while(node) {
     IntervalEventNode *interval;
+    clearVec3(node->force);
+    clearVec3(node->torque);
     if(node->behaviour != NULL) {
       if(!node->behaviour(node)) {
         node = previousData(&scene->nodes);

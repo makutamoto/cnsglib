@@ -16,6 +16,7 @@ typedef struct {
 	float mass;
 	float inertia[3][3];
 	float inverseInertia[3][3];
+	float worldInverseInertia[3][3];
 } Shape;
 
 typedef struct _Node {
@@ -23,6 +24,8 @@ typedef struct _Node {
 	float velocity[3];
 	float angVelocity[3];
 	float angMomentum[3];
+	float force[3];
+	float torque[3];
 	float position[3];
 	float angle[3];
 	float scale[3];

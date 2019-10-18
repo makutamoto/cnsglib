@@ -9,6 +9,8 @@
 float *convVec3toVec4(const float in[3], float out[4]);
 float (*convMat4toMat3(float in[4][4], float out[3][3]))[3];
 
+float *clearVec3(float in[3]);
+
 float dot2(const float a[2], const float b[2]);
 float dot3(const float a[3], const float b[3]);
 float dot4(const float a[4], const float b[4]);
@@ -34,6 +36,8 @@ float* normalize3(const float vector[3], float out[3]);
 float* direction2(const float a[2], const float b[2], float out[2]);
 float* direction3(const float a[3], const float b[3], float out[3]);
 float angleVec2(const float vector[2]);
+
+float (*addMat3(const float a[3][3], const float b[3][3], float out[3][3]))[3];
 float	(*mulMat3(const float a[3][3], const float b[3][3], float out[3][3]))[3];
 float	(*mulMat4(const float a[4][4], const float b[4][4], float out[4][4]))[4];
 float	(*mulMat3ByScalar(const float in[3][3], float scalar, float out[3][3]))[3];
@@ -54,6 +58,7 @@ float (*orthogonalize3(float in[3][3], float out[3][3]))[3];
 
 float *getTriangleCM3(float triangle[3][3], float out[3]);
 
+float (*genSkewMat3(float in[3], float out[3][3]))[3];
 float (*genTranslationMat3(float dx, float dy, float mat[3][3]))[3];
 float (*genTranslationMat4(float dx, float dy, float dz, float mat[4][4]))[4];
 float (*genIdentityMat3(float mat[3][3]))[3];
@@ -65,6 +70,8 @@ float (*genRotationXMat4(float rotation, float mat[4][4]))[4];
 float (*genRotationYMat4(float rotation, float mat[4][4]))[4];
 float (*genRotationZMat4(float rotation, float mat[4][4]))[4];
 float (*genRotationMat4(float rx, float ry, float rz, float mat[4][4]))[4];
+
+float *getAngleFromMat3(float in[3][3], float out[3]);
 
 float (*genLookAtMat4(float position[3], float target[3], float worldUp[3], float mat[4][4]))[4];
 float (*genPerspectiveMat4(float fovY, float zNear, float zFar, float aspect, float mat[4][4]))[4];

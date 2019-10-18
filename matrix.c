@@ -19,6 +19,11 @@ float (*convMat4toMat3(float in[4][4], float out[3][3]))[3] {
 	return out;
 }
 
+float *clearVec3(float in[3]) {
+	memset(in, 0, 3 * sizeof(float));
+	return in;
+};
+
 float dot2(const float a[2], const float b[2]) {
 	return a[0] * b[0] + a[1] * b[1];
 }
@@ -208,6 +213,14 @@ float angleVec2(const float vector[2]) {
 		}
 	}
 	return result;
+}
+
+float (*addMat3(const float a[3][3], const float b[3][3], float out[3][3]))[3] {
+	int row, col;
+	for(row = 0;row < 3;row++) {
+		for(col = 0;col < 3;col++) out[row][col] = a[row][col] + b[row][col];
+	}
+	return out;
 }
 
 float	(*mulMat3(const float a[3][3], const float b[3][3], float out[3][3]))[3] {
@@ -427,7 +440,14 @@ float (*inverse3(float in[3][3], float out[3][3]))[3] {
 }
 
 static float* orthogonalizeProjection3(float project[3], float projected[3], float out[3]) {
-	float scalar = dot3(project, projected) / dot3(projected, projected);
+	float scalar;
+	float scalarNumerator = dot3(project, projected);
+	float scalarDenominator = dot3(projected, projected);
+	if(scalarDenominator == 0.0F) {
+		clearVec3(out);
+		return out;
+	}
+	scalar = scalarNumerator / scalarDenominator;
 	mulVec3ByScalar(projected, scalar, out);
 	return out;
 }
@@ -445,6 +465,17 @@ float (*orthogonalize3(float in[3][3], float out[3][3]))[3] {
 float *getTriangleCM3(float triangle[3][3], float out[3]) {
 	float temp[3];
 	divVec3ByScalar(addVec3(addVec3(triangle[0], triangle[1], temp), triangle[2], temp), 3.0F, out);
+	return out;
+}
+
+float (*genSkewMat3(float in[3], float out[3][3]))[3] {
+	memset(out, 0, 9 * sizeof(float));
+	out[0][1] = - in[2];
+	out[0][2] = in[1];
+	out[1][0] = in[2];
+	out[1][2] = - in[0];
+	out[2][0] = - in[1];
+	out[2][1] = in[0];
 	return out;
 }
 
@@ -629,6 +660,13 @@ float (*genRotationMat4(float rx, float ry, float rz, float mat[4][4]))[4] {
 	genRotationYMat4(ry, yMat);
 	genRotationZMat4(rz, zMat);
 	return mulMat4(mulMat4(zMat, yMat, temp), xMat, mat);
+}
+
+float *getAngleFromMat3(float in[3][3], float out[3]) {
+	out[0] = atan2(in[2][1], in[2][2]);
+	out[1] = atan2(-in[2][0], sqrt(in[2][1] * in[2][1] + in[2][2] * in[2][2]));
+	out[2] = atan2(in[1][0], in[0][0]);
+	return out;
 }
 
 float (*genLookAtMat4(float position[3], float target[3], float worldUp[3], float mat[4][4]))[4] {
