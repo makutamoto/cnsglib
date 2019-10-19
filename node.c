@@ -1,7 +1,7 @@
 #include<stdio.h>
-#include<Windows.h>
-
+#include<math.h>
 #include<time.h>
+#include<Windows.h>
 
 #include "./include/node.h"
 #include "./include/borland.h"
@@ -11,8 +11,6 @@
 
 #define OBJ_LINE_BUFFER_SIZE 128
 #define OBJ_WORD_BUFFER_SIZE 32
-
-#define sign(x) ((x) < 0 ? -1 : ((x) > 0 ? 1 : 0))
 
 Node initNode(const char *id, Image image) {
   Node node;
@@ -279,8 +277,8 @@ Vector* getPolygons(Node node, Vector *polygons) {
 	size_t i1, i2;
 	resetIteration(&node.shape.indices);
 	for(i1 = 0;i1 < node.shape.indices.length / 3;i1++) {
-		float *triangle = malloc(9 * sizeof(float));
-		for(i2 = 0;i2 < 3;i2++) {
+    float *triangle = malloc(9 * sizeof(float));
+    for(i2 = 0;i2 < 3;i2++) {
 			unsigned long index = *(unsigned long*)nextData(&node.shape.indices);
       float *data = dataAt(&node.shape.vertices, index);
       triangle[i2 * 3] = data[0];
@@ -292,33 +290,57 @@ Vector* getPolygons(Node node, Vector *polygons) {
   return polygons;
 }
 
-int testCollisionPolygonPolygon(Node a, Node b) {
+int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points) {
+  unsigned long indexA = 0;
   Vector polygonsA = initVector();
   Vector polygonsB = initVector();
-  float *polygonA, *polygonB;
+  float (*polygonA)[3], (*polygonB)[3];
+  int collided = FALSE;
   getPolygons(a, &polygonsA);
   getPolygons(b, &polygonsB);
   polygonA = nextData(&polygonsA);
   while(polygonA) {
+    unsigned long indexB = 0;
     float polygonAWorld[3][3];
-    mulMat4ByTriangle(a.lastTransformation, (float (*)[3])polygonA, polygonAWorld);
+    mulMat4ByTriangle(a.lastTransformation, polygonA, polygonAWorld);
     resetIteration(&polygonsB);
     polygonB = nextData(&polygonsB);
     while(polygonB) {
       float polygonBWorld[3][3];
-      mulMat4ByTriangle(b.lastTransformation, (float (*)[3])polygonB, polygonBWorld);
+      mulMat4ByTriangle(b.lastTransformation, polygonB, polygonBWorld);
       if(testCollisionTriangleTriangle(polygonAWorld, polygonBWorld)) {
-        freeVector(&polygonsA);
-        freeVector(&polygonsB);
-        return TRUE;
+        float temp[2][3];
+        float tempMat3[2][3][3];
+        float (*normal)[3] = malloc(6 * sizeof(float));
+        float (*point)[3] = malloc(6 * sizeof(float));
+        unsigned long *normalIndex;
+        getTriangleCM3(polygonAWorld, temp[0]);
+        subVec3(temp[0], a.position, point[0]);
+        getTriangleCM3(polygonBWorld, temp[0]);
+        subVec3(temp[0], b.position, point[1]);
+        normalIndex = (unsigned long*)dataAt(&a.shape.normalIndices, indexA);
+        memcpy_s(temp, 3 * sizeof(float), dataAt(&a.shape.normals, *normalIndex), 3 * sizeof(float));
+        transposeMat3(inverse3(convMat4toMat3(a.lastTransformation, tempMat3[0]), tempMat3[1]), tempMat3[0]);
+        mulMat3Vec3(tempMat3[0], temp[0], temp[1]);
+        normalize3(temp[1], normal[0]);
+        normalIndex = (unsigned long*)dataAt(&b.shape.normalIndices, indexB);
+        memcpy_s(temp, 3 * sizeof(float), dataAt(&b.shape.normals, *normalIndex), 3 * sizeof(float));
+        transposeMat3(inverse3(convMat4toMat3(b.lastTransformation, tempMat3[0]), tempMat3[1]), tempMat3[0]);
+        mulMat3Vec3(tempMat3[0], temp[0], temp[1]);
+        normalize3(temp[1], normal[1]);
+        push(normals, normal);
+        push(points, point);
+        collided = TRUE;
       }
       polygonB = nextData(&polygonsB);
+      indexB += 1;
     }
     polygonA = nextData(&polygonsA);
+    indexA += 1;
   }
   freeVector(&polygonsA);
   freeVector(&polygonsB);
-  return FALSE;
+  return collided;
 }
 
 void addIntervalEventNode(Node *node, unsigned int milliseconds, void (*callback)(Node*)) {
@@ -329,24 +351,40 @@ void addIntervalEventNode(Node *node, unsigned int milliseconds, void (*callback
   push(&node->intervalEvents, interval);
 }
 
+Shape initShape(float mass) {
+  Shape shape;
+  memset(&shape, 0, sizeof(Shape));
+  shape.indices = initVector();
+  shape.vertices = initVector();
+  shape.normals = initVector();
+  shape.normalIndices = initVector();
+  shape.uv = initVector();
+  shape.uvIndices = initVector();
+  shape.mass = mass;
+  shape.restitution = 0.0F;
+  return shape;
+}
+
 Shape initShapePlane(float width, float height, unsigned char color) {
   int i;
   float halfWidth = width / 2.0F;
   float halfHeight = height / 2.0F;
-  Shape shape;
+  Shape shape = initShape(1.0F);
   static unsigned long generated_indices[] = { 0, 1, 2, 1, 3, 2 };
   Vertex generated_vertices[4];
-  float generated_uv[][2] = {
+  static unsigned long generated_normalIndices[] = {
+    0, 1,
+  };
+  static float generated_normals[][3] = {
+    { 0.0F, 0.0F, -1.0F }, { 0.0F, 0.0F, -1.0F },
+  };
+  static float generated_uv[][2] = {
     { 1.0F, 1.0F }, { 0.0F, 1.0F }, { 1.0F, 0.0F }, { 0.0F, 0.0F },
   };
   generated_vertices[0] = initVertex(-halfWidth, -halfHeight, 0.0F, color);
   generated_vertices[1] = initVertex(halfWidth, -halfHeight, 0.0F, color);
   generated_vertices[2] = initVertex(-halfWidth, halfHeight, 0.0F, color);
   generated_vertices[3] = initVertex(halfWidth, halfHeight, 0.0F, color);
-  shape.indices = initVector();
-  shape.vertices = initVector();
-  shape.uv = initVector();
-  shape.uvIndices = initVector();
   for(i = 0;i < 6;i++) {
     unsigned long *index = malloc(sizeof(unsigned long));
     unsigned long *uvIndex = malloc(sizeof(unsigned long));
@@ -364,6 +402,16 @@ Shape initShapePlane(float width, float height, unsigned char color) {
     push(&shape.vertices, vertex);
     push(&shape.uv, coords);
   }
+  for(i = 0;i < 2;i++) {
+    float *normal = malloc(3 * sizeof(float));
+    unsigned long *normalIndex = (unsigned long*)malloc(sizeof(unsigned long));
+    memcpy_s(normal, 3 * sizeof(float), generated_normals[i], 3 * sizeof(float));
+    *normalIndex = generated_normalIndices[i];
+    push(&shape.normals, normal);
+    push(&shape.normalIndices, normalIndex);
+  }
+  genInertiaTensorBox(100.0F * shape.mass, width, height, 0.0F, shape.inertia);
+  inverse3(shape.inertia, shape.inverseInertia);
   return shape;
 }
 
@@ -371,16 +419,18 @@ Shape initShapePlaneInv(float width, float height, unsigned char color) {
   int i;
   float halfWidth = width / 2.0F;
   float halfHeight = height / 2.0F;
-  Shape shape;
+  Shape shape = initShape(1.0F);
   static unsigned long generated_indices[] = { 0, 1, 2, 1, 3, 2 };
   Vertex generated_vertices[4];
-  float generated_uv[][2] = {
+  static unsigned long generated_normalIndices[] = {
+    0, 1,
+  };
+  static float generated_normals[][3] = {
+    { 0.0F, 0.0F, 1.0F }, { 0.0F, 0.0F, 1.0F },
+  };
+  static float generated_uv[][2] = {
     { 0.0F, 0.0F }, { 0.0F, 1.0F }, { 1.0F, 0.0F }, { 1.0F, 1.0F },
   };
-  shape.indices = initVector();
-  shape.vertices = initVector();
-  shape.uv = initVector();
-  shape.uvIndices = initVector();
   generated_vertices[0] = initVertex(-halfWidth, -halfHeight, 0.0F, color);
   generated_vertices[1] = initVertex(-halfWidth, halfHeight, 0.0F, color);
   generated_vertices[2] = initVertex(halfWidth, -halfHeight, 0.0F, color);
@@ -402,6 +452,16 @@ Shape initShapePlaneInv(float width, float height, unsigned char color) {
     push(&shape.vertices, vertex);
     push(&shape.uv, coords);
   }
+  for(i = 0;i < 2;i++) {
+    float *normal = malloc(3 * sizeof(float));
+    unsigned long *normalIndex = (unsigned long*)malloc(sizeof(unsigned long));
+    memcpy_s(normal, 3 * sizeof(float), generated_normals[i], 3 * sizeof(float));
+    *normalIndex = generated_normalIndices[i];
+    push(&shape.normals, normal);
+    push(&shape.normalIndices, normalIndex);
+  }
+  genInertiaTensorBox(100.0F * shape.mass, width, height, 0.0F, shape.inertia);
+  inverse3(shape.inertia, shape.inverseInertia);
   return shape;
 }
 
@@ -410,14 +470,25 @@ Shape initShapeBox(float width, float height, float depth, unsigned char color) 
   float halfWidth = width / 2.0F;
   float halfHeight = height / 2.0F;
   float halfDepth = depth / 2.0F;
-  Shape shape;
+  Shape shape = initShape(1.0F);
   static unsigned long generated_indices[] = {
     0, 1, 2, 1, 3, 2, 4, 5, 6, 5, 7, 6,
     8, 9, 10, 9, 11, 10, 12, 13, 14, 13, 15, 14,
     16, 17, 18, 17, 19, 18, 20, 21, 22, 21, 23, 22,
   };
   Vertex generated_vertices[24];
-  float generated_uv[][2] = {
+  static unsigned long generated_normalIndices[] = {
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+  };
+  static float generated_normals[][3] = {
+    { 0.0F, 0.0F, 1.0F }, { 0.0F, 0.0F, 1.0F },
+    { 0.0F, 0.0F, -1.0F }, { 0.0F, 0.0F, -1.0F },
+    { 1.0F, 0.0F, 0.0F }, { 1.0F, 0.0F, 0.0F },
+    { -1.0F, 0.0F, 0.0F }, { -1.0F, 0.0F, 0.0F },
+    { 0.0F, -1.0F, 0.0F }, { 0.0F, -1.0F, 0.0F },
+    { 0.0F, 1.0F, 0.0F }, { 0.0F, 1.0F, 0.0F },
+  };
+  static float generated_uv[][2] = {
     { 0.0F, 0.0F }, { 0.0F, 1.0F }, { 1.0F, 0.0F }, { 1.0F, 1.0F },
     { 0.0F, 0.0F }, { 1.0F, 0.0F }, { 0.0F, 1.0F }, { 1.0F, 1.0F },
     { 0.0F, 0.0F }, { 0.0F, 1.0F }, { 1.0F, 0.0F }, { 1.0F, 1.0F },
@@ -425,10 +496,6 @@ Shape initShapeBox(float width, float height, float depth, unsigned char color) 
     { 0.0F, 0.0F }, { 0.0F, 1.0F }, { 1.0F, 0.0F }, { 1.0F, 1.0F },
     { 0.0F, 0.0F }, { 1.0F, 0.0F }, { 0.0F, 1.0F }, { 1.0F, 1.0F },
   };
-  shape.indices = initVector();
-  shape.vertices = initVector();
-  shape.uv = initVector();
-  shape.uvIndices = initVector();
   generated_vertices[0] = initVertex(-halfWidth, -halfHeight, halfDepth, color);
   generated_vertices[1] = initVertex(-halfWidth, halfHeight, halfDepth, color);
   generated_vertices[2] = initVertex(halfWidth, -halfHeight, halfDepth, color);
@@ -470,28 +537,53 @@ Shape initShapeBox(float width, float height, float depth, unsigned char color) 
     push(&shape.vertices, vertex);
     push(&shape.uv, coords);
   }
+  for(i = 0;i < 12;i++) {
+    float *normal = malloc(3 * sizeof(float));
+    unsigned long *normalIndex = (unsigned long*)malloc(sizeof(unsigned long));
+    memcpy_s(normal, 3 * sizeof(float), generated_normals[i], 3 * sizeof(float));
+    *normalIndex = generated_normalIndices[i];
+    push(&shape.normals, normal);
+    push(&shape.normalIndices, normalIndex);
+  }
+  genInertiaTensorBox(100.0F * shape.mass, width, height, depth, shape.inertia);
+  inverse3(shape.inertia, shape.inverseInertia);
   return shape;
 }
 
-size_t getUntil(char *string, char separator, size_t index, char *out, size_t out_size) {
+static size_t getUntil(char *string, char *separators, size_t index, char *out, size_t out_size) {
   size_t i = 0;
   if(string[index] == '\0') {
     out[0] = '\0';
     return 0;
   }
   for(;string[index] != '\0';index++) {
-    if(string[index] != separator) break;
+    BOOL flag = FALSE;
+    size_t i2;
+    for(i2 = 0;separators[i2] != '\0';i2++) {
+      if(string[index] == separators[i2]) {
+        flag = TRUE;
+        break;
+      }
+    }
+    if(flag) continue;
+    break;
   }
   for(;string[index] != '\0';index++) {
-    if(string[index] == separator || string[index] == '\n') {
-      out[i] = '\0';
-      break;
+    BOOL flag = FALSE;
+    size_t i2;
+    for(i2 = 0;separators[i2] != '\0';i2++) {
+      if(string[index] == separators[i2]) {
+        flag = TRUE;
+        break;
+      }
     }
+    if(flag) break;
     if(i < out_size - 1) {
       out[i] = string[index];
       i += 1;
     }
   }
+  out[i] = '\0';
   return index + 1;
 }
 
@@ -500,10 +592,9 @@ int initShapeFromObj(Shape *shape, char *filename) {
   char buffer[OBJ_LINE_BUFFER_SIZE];
   char temp[OBJ_WORD_BUFFER_SIZE];
   size_t line = 1;
-  shape->indices = initVector();
-  shape->vertices = initVector();
-  shape->uv = initVector();
-  shape->uvIndices = initVector();
+  float aabb[3][2];
+  BOOL aabbCleared = FALSE;
+  *shape = initShape(1.0F);
   if(fopen_s(&file, filename, "r")) {
     fputs("File not found.", stderr);
     fclose(file);
@@ -513,7 +604,7 @@ int initShapeFromObj(Shape *shape, char *filename) {
     int i;
     size_t index = 0;
     size_t old_index;
-    index = getUntil(buffer, ' ', index, temp, OBJ_WORD_BUFFER_SIZE);
+    index = getUntil(buffer, " \n", index, temp, OBJ_WORD_BUFFER_SIZE);
     if(strcmp(temp, "v") == 0) {
       Vertex *vertex = calloc(sizeof(Vertex), 1);
       if(vertex == NULL) {
@@ -523,7 +614,7 @@ int initShapeFromObj(Shape *shape, char *filename) {
       }
       for(i = 0;i < 4;i++) {
         old_index = index;
-        index = getUntil(buffer, ' ', index, temp, OBJ_WORD_BUFFER_SIZE);
+        index = getUntil(buffer, " \n", index, temp, OBJ_WORD_BUFFER_SIZE);
         if(temp[0] == '\0') {
           if(i == 3) {
             vertex->components[3] = 1.0F;
@@ -536,6 +627,22 @@ int initShapeFromObj(Shape *shape, char *filename) {
           vertex->components[i] = (float)atof(temp);
         }
       }
+      if(aabbCleared) {
+        aabb[0][0] = min(aabb[0][0], vertex->components[0]);
+        aabb[0][1] = max(aabb[0][1], vertex->components[0]);
+        aabb[1][0] = min(aabb[1][0], vertex->components[1]);
+        aabb[1][1] = max(aabb[1][1], vertex->components[1]);
+        aabb[2][0] = min(aabb[2][0], vertex->components[2]);
+        aabb[2][1] = max(aabb[2][1], vertex->components[2]);
+      } else {
+        aabb[0][0] = vertex->components[0];
+        aabb[0][1] = vertex->components[0];
+        aabb[1][0] = vertex->components[1];
+        aabb[1][1] = vertex->components[1];
+        aabb[2][0] = vertex->components[2];
+        aabb[2][1] = vertex->components[2];
+        aabbCleared = TRUE;
+      }
       push(&shape->vertices, vertex);
     } else if(strcmp(temp, "vt") == 0) {
       float *coords = malloc(2 * sizeof(float));
@@ -546,7 +653,7 @@ int initShapeFromObj(Shape *shape, char *filename) {
       }
       for(i = 0;i < 2;i++) {
         old_index = index;
-        index = getUntil(buffer, ' ', index, temp, OBJ_WORD_BUFFER_SIZE);
+        index = getUntil(buffer, " \n", index, temp, OBJ_WORD_BUFFER_SIZE);
         if(temp[0] == '\0') {
           if(i != 0) {
             coords[1] = 0.0F;
@@ -564,12 +671,39 @@ int initShapeFromObj(Shape *shape, char *filename) {
         }
       }
       push(&shape->uv, coords);
+    } else if(strcmp(temp, "vn") == 0) {
+      float normalTemp[3];
+      float *normal = malloc(3 * sizeof(float));
+      if(normal == NULL) {
+        fputs("readObj: Memory allocation failed.", stderr);
+        fclose(file);
+        return -9;
+      }
+      for(i = 0;i < 3;i++) {
+        old_index = index;
+        index = getUntil(buffer, " \n", index, temp, OBJ_WORD_BUFFER_SIZE);
+        if(temp[0] == '\0') {
+          fprintf(stderr, "readObj: Vertex component %d does not found. (%zu, %zu)", i, line, old_index);
+          fclose(file);
+          return -10;
+        } else {
+          normalTemp[i] = (float)atof(temp);
+        }
+      }
+      normalize3(normalTemp, normal);
+      push(&shape->normals, normal);
     } else if(strcmp(temp, "f") == 0) {
       unsigned long faceIndices[3];
       unsigned long faceUVIndices[3];
+      unsigned long *normalIndex = malloc(sizeof(unsigned long));
+      if(normalIndex == NULL) {
+        fputs("readObj: Memory allocation failed.", stderr);
+        fclose(file);
+        return -11;
+      }
       for(i = 0;i < 3;i++) {
         old_index = index;
-        index = getUntil(buffer, ' ', index, temp, OBJ_WORD_BUFFER_SIZE);
+        index = getUntil(buffer, " \n", index, temp, OBJ_WORD_BUFFER_SIZE);
         if(temp[0] == '\0') {
           fprintf(stderr, "readObj: Vertex component %d does not found. (%zu, %zu)", i, line, old_index);
           fclose(file);
@@ -577,14 +711,14 @@ int initShapeFromObj(Shape *shape, char *filename) {
         } else {
           size_t index2 = 0;
           char temp2[OBJ_WORD_BUFFER_SIZE];
-          index2 = getUntil(temp, '/', index2, temp2, OBJ_WORD_BUFFER_SIZE);
+          index2 = getUntil(temp, "/", index2, temp2, OBJ_WORD_BUFFER_SIZE);
           faceIndices[i] = atoi(temp2);
           if(faceIndices[i] < 0) {
             faceIndices[i] += shape->vertices.length;
           } else {
             faceIndices[i] -= 1;
           }
-          getUntil(temp, '/', index2, temp2, OBJ_WORD_BUFFER_SIZE);
+          index2 = getUntil(temp, "/", index2, temp2, OBJ_WORD_BUFFER_SIZE);
           if(temp2[0] == '\0') {
             faceUVIndices[i] = 0;
           } else {
@@ -594,6 +728,20 @@ int initShapeFromObj(Shape *shape, char *filename) {
             } else {
               faceUVIndices[i] -= 1;
             }
+          }
+          if(i == 0) {
+            getUntil(temp, "", index2, temp2, OBJ_WORD_BUFFER_SIZE);
+            if(temp2[0] == '\0') {
+              *normalIndex = 0;
+            } else {
+              *normalIndex = atoi(temp2);
+              if(*normalIndex < 0) {
+                *normalIndex += shape->normals.length;
+              } else {
+                *normalIndex -= 1;
+              }
+            }
+            push(&shape->normalIndices, normalIndex);
           }
         }
       }
@@ -619,6 +767,8 @@ int initShapeFromObj(Shape *shape, char *filename) {
     }
     line += 1;
   }
+  genInertiaTensorBox(100.0F * shape->mass, fabsf(aabb[0][1] - aabb[0][0]), fabsf(aabb[1][1] - aabb[1][0]), fabsf(aabb[2][1] - aabb[2][0]), shape->inertia);
+  inverse3(shape->inertia, shape->inverseInertia);
   fclose(file);
   return 0;
 }

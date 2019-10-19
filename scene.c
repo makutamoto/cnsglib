@@ -26,6 +26,7 @@ Camera initCamera(float x, float y, float z, float aspect) {
 Scene initScene(void) {
   Scene scene;
   memset(&scene, 0, sizeof(Scene));
+  scene.acceleration[1] = -98.0F;
   scene.nodes = initVector();
   scene.camera = initCamera(0.0F, 0.0F, 0.0F, 1.0F);
   return scene;
@@ -39,24 +40,11 @@ void addIntervalEventScene(Scene *scene, unsigned int milliseconds, void (*callb
   push(&scene->intervalEvents, interval);
 }
 
-void resetSceneClock(Scene *scene) {
-  IntervalEventScene *interval;
-  resetIteration(&scene->intervalEvents);
-  interval = nextData(&scene->intervalEvents);
-  while(interval) {
-    interval->begin = clock();
-    interval = nextData(&scene->intervalEvents);
-  }
-  scene->previousClock = clock();
-}
-
 void drawScene(Scene *scene) {
   Node *node;
   float lookAt[4][4];
   float projection[4][4];
   float camera[4][4];
-  float elapsed;
-  IntervalEventScene *intervalScene;
   clearTransformation();
   if(scene->camera.parent) {
     float temp[4];
@@ -83,14 +71,50 @@ void drawScene(Scene *scene) {
     node->collisionFlags = 0;
     node = nextData(&scene->nodes);
   }
+  flushBuffer();
+}
+
+static void impulseNodes(Node *nodeA, float normal[3], float point[3]) {
+  float temp[2][3];
+  float velocity[3];
+  float impulse[3];
+  float impulseNumerator, impulseDenominator;
+  addVec3(nodeA->velocity, cross(nodeA->angVelocity, point, temp[0]), velocity);
+  impulseNumerator = - (1.0F + nodeA->shape.restitution) * dot3(velocity, normal);
+  if(impulseNumerator <= 0) return;
+  impulseDenominator = 1.0F / nodeA->shape.mass + dot3(cross(mulMat3Vec3(nodeA->shape.worldInverseInertia, cross(point, normal, temp[0]), temp[1]), point, temp[0]), normal);
+  mulVec3ByScalar(normal, impulseNumerator / impulseDenominator, impulse);
+  addVec3(nodeA->velocity, divVec3ByScalar(impulse, nodeA->shape.mass, temp[0]), nodeA->velocity);
+  addVec3(nodeA->angMomentum, cross(point, impulse, temp[0]), nodeA->angMomentum);
+  mulMat3Vec3(nodeA->shape.worldInverseInertia, nodeA->angMomentum, nodeA->angVelocity);
+}
+
+void updateScene(Scene *scene, float elapsed) {
+  Node *node;
+  IntervalEventScene *intervalScene;
   resetIteration(&scene->nodes);
   node = nextData(&scene->nodes);
-  elapsed = (float)(clock() - scene->previousClock) / CLOCKS_PER_SEC;
-  scene->previousClock = clock();
   while(node) {
-    float x[3];
-    mulVec3ByScalar(node->velocity, elapsed, x);
-    addVec3(node->position, x, node->position);
+    float temp[3];
+    float tempMat4[4][4];
+    float tempMat3[2][3][3];
+    float orientation[3][3];
+    if(node->isPhysicsEnabled) addVec3(node->force, mulVec3ByScalar(scene->acceleration, node->shape.mass, temp), node->force);
+    addVec3(node->position, mulVec3ByScalar(node->velocity, elapsed, temp), node->position);
+    genRotationMat4(node->angle[0], node->angle[1], node->angle[2], tempMat4);
+    convMat4toMat3(tempMat4, orientation);
+    genSkewMat3(node->angVelocity, tempMat3[0]);
+    addMat3(orientation, mulMat3ByScalar(mulMat3(tempMat3[0], orientation, tempMat3[1]), elapsed, tempMat3[0]), tempMat3[1]);
+    orthogonalize3(tempMat3[1], orientation);
+    getAngleFromMat3(orientation, node->angle);
+    addVec3(node->velocity, mulVec3ByScalar(node->force, elapsed / node->shape.mass, temp), node->velocity);
+    addVec3(node->angMomentum, mulVec3ByScalar(node->torque, elapsed, temp), node->angMomentum);
+    mulMat3(orientation, mulMat3(node->shape.inverseInertia, transposeMat3(orientation, tempMat3[0]), tempMat3[1]), node->shape.worldInverseInertia);
+    mulMat3Vec3(node->shape.worldInverseInertia, node->angMomentum, node->angVelocity);
+    node = nextData(&scene->nodes);
+  }
+  node = nextData(&scene->nodes);
+  while(node) {
     if(node->collisionMaskActive || node->collisionMaskPassive) {
       Node *collisionTarget;
       VectorItem *item = scene->nodes.currentItem;
@@ -101,7 +125,20 @@ void drawScene(Scene *scene) {
         unsigned int flags = flagsA | flagsB;
         if(flags) {
           if(testCollision(*node, *collisionTarget)) {
-            if(testCollisionPolygonPolygon(*node, *collisionTarget)) {
+            Vector points = initVector();
+            Vector normals = initVector();
+            if(testCollisionPolygonPolygon(*node, *collisionTarget, &normals, &points)) {
+              float (*point)[3], (*normal)[3];
+              resetIteration(&points);
+              resetIteration(&normals);
+              point = nextData(&points);
+              normal = nextData(&normals);
+              while(point) {
+                if(node->isPhysicsEnabled) impulseNodes(node, normal[1], point[0]);
+                if(collisionTarget->isPhysicsEnabled) impulseNodes(collisionTarget, normal[0], point[1]);
+                point = nextData(&points);
+                normal = nextData(&normals);
+              }
               push(&node->collisionTargets, collisionTarget);
               push(&collisionTarget->collisionTargets, node);
               node->collisionFlags |= flags;
@@ -119,6 +156,8 @@ void drawScene(Scene *scene) {
   node = previousData(&scene->nodes);
   while(node) {
     IntervalEventNode *interval;
+    clearVec3(node->force);
+    clearVec3(node->torque);
     if(node->behaviour != NULL) {
       if(!node->behaviour(node)) {
         node = previousData(&scene->nodes);
@@ -157,7 +196,6 @@ void drawScene(Scene *scene) {
     }
     intervalScene = nextData(&scene->intervalEvents);
   }
-  flushBuffer();
 }
 
 void discardScene(Scene *scene) {

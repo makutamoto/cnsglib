@@ -12,6 +12,18 @@ float *convVec3toVec4(const float in[3], float out[4]) {
 	return out;
 }
 
+float (*convMat4toMat3(float in[4][4], float out[3][3]))[3] {
+	memcpy_s(out[0], 3 * sizeof(float), in[0], 3 * sizeof(float));
+	memcpy_s(out[1], 3 * sizeof(float), in[1], 3 * sizeof(float));
+	memcpy_s(out[2], 3 * sizeof(float), in[2], 3 * sizeof(float));
+	return out;
+}
+
+float *clearVec3(float in[3]) {
+	memset(in, 0, 3 * sizeof(float));
+	return in;
+};
+
 float dot2(const float a[2], const float b[2]) {
 	return a[0] * b[0] + a[1] * b[1];
 }
@@ -108,10 +120,23 @@ float* mulVec2ByScalar(const float vector[2], float scalar, float out[2]) {
 	return out;
 }
 
+float* divVec2ByScalar(const float vector[2], float scalar, float out[2]) {
+	out[0] = vector[0] / scalar;
+	out[1] = vector[1] / scalar;
+	return out;
+}
+
 float* mulVec3ByScalar(const float vector[3], float scalar, float out[3]) {
 	out[0] = scalar * vector[0];
 	out[1] = scalar * vector[1];
 	out[2] = scalar * vector[2];
+	return out;
+}
+
+float* divVec3ByScalar(const float vector[3], float scalar, float out[3]) {
+	out[0] = vector[0] / scalar;
+	out[1] = vector[1] / scalar;
+	out[2] = vector[2] / scalar;
 	return out;
 }
 
@@ -120,6 +145,14 @@ float* mulVec4ByScalar(const float vector[4], float scalar, float out[4]) {
 	out[1] = scalar * vector[1];
 	out[2] = scalar * vector[2];
 	out[3] = scalar * vector[3];
+	return out;
+}
+
+float* divVec4ByScalar(const float vector[4], float scalar, float out[4]) {
+	out[0] = vector[0] / scalar;
+	out[1] = vector[1] / scalar;
+	out[2] = vector[2] / scalar;
+	out[3] = vector[3] / scalar;
 	return out;
 }
 
@@ -182,6 +215,14 @@ float angleVec2(const float vector[2]) {
 	return result;
 }
 
+float (*addMat3(const float a[3][3], const float b[3][3], float out[3][3]))[3] {
+	int row, col;
+	for(row = 0;row < 3;row++) {
+		for(col = 0;col < 3;col++) out[row][col] = a[row][col] + b[row][col];
+	}
+	return out;
+}
+
 float	(*mulMat3(const float a[3][3], const float b[3][3], float out[3][3]))[3] {
 	float b0[3], b1[3], b2[3];
 	b0[0] = b[0][0];
@@ -202,6 +243,32 @@ float	(*mulMat3(const float a[3][3], const float b[3][3], float out[3][3]))[3] {
 	out[2][0] = dot3(a[2], b0);
 	out[2][1] = dot3(a[2], b1);
 	out[2][2] = dot3(a[2], b2);
+	return out;
+}
+
+float	(*mulMat3ByScalar(const float in[3][3], float scalar, float out[3][3]))[3] {
+	out[0][0] = scalar * in[0][0];
+	out[0][1] = scalar * in[0][1];
+	out[0][2] = scalar * in[0][2];
+	out[1][0] = scalar * in[1][0];
+	out[1][1] = scalar * in[1][1];
+	out[1][2] = scalar * in[1][2];
+	out[2][0] = scalar * in[2][0];
+	out[2][1] = scalar * in[2][1];
+	out[2][2] = scalar * in[2][2];
+	return out;
+}
+
+float	(*divMat3ByScalar(const float in[3][3], float scalar, float out[3][3]))[3] {
+	out[0][0] = in[0][0] / scalar;
+	out[0][1] = in[0][1] / scalar;
+	out[0][2] = in[0][2] / scalar;
+	out[1][0] = in[1][0] / scalar;
+	out[1][1] = in[1][1] / scalar;
+	out[1][2] = in[1][2] / scalar;
+	out[2][0] = in[2][0] / scalar;
+	out[2][1] = in[2][1] / scalar;
+	out[2][2] = in[2][2] / scalar;
 	return out;
 }
 
@@ -316,6 +383,105 @@ float (*transposeMat4(const float mat[4][4], float out[4][4]))[4] {
 	out[1][3] = mat[3][1];
 	out[2][3] = mat[3][2];
 	out[3][3] = mat[3][3];
+	return out;
+}
+
+float (*cofactor3(const float in[3][3], int row, int col, float out[2][2]))[2] {
+	int r, c;
+	int cords[2] = { 0, 0 };
+	for(r = 0;r < 3;r++) {
+			if(r == row) continue;
+			cords[1] = 0;
+			for(c = 0;c < 3;c++) {
+					if(c == col) continue;
+					out[cords[0]][cords[1]] = in[r][c];
+					cords[1] += 1;
+			}
+			cords[0] += 1;
+	}
+	if(row == 1 ^ col == 1) {
+		float temp[2];
+		memcpy_s(temp, sizeof(temp), out[0], sizeof(temp));
+		memcpy_s(out[0], sizeof(temp), out[1], sizeof(temp));
+		memcpy_s(out[1], sizeof(temp), temp, sizeof(temp));
+	}
+	return out;
+}
+
+float (*cofactorsMat3(const float in[3][3], float out[3][3]))[3] {
+	float temp[2][2];
+	out[0][0] = det2(cofactor3(in, 0, 0, temp));
+	out[0][1] = det2(cofactor3(in, 0, 1, temp));
+	out[0][2] = det2(cofactor3(in, 0, 2, temp));
+	out[1][0] = det2(cofactor3(in, 1, 0, temp));
+	out[1][1] = det2(cofactor3(in, 1, 1, temp));
+	out[1][2] = det2(cofactor3(in, 1, 2, temp));
+	out[2][0] = det2(cofactor3(in, 2, 0, temp));
+	out[2][1] = det2(cofactor3(in, 2, 1, temp));
+	out[2][2] = det2(cofactor3(in, 2, 2, temp));
+	return out;
+}
+
+float (*adjugate3(float in[3][3], float out[3][3]))[3] {
+	float temp[3][3];
+  transposeMat3(cofactorsMat3(in, temp), out);
+	return out;
+}
+
+float det2(float in[2][2]) {
+	return in[0][0] * in[1][1] - in[0][1] * in[1][0];
+}
+
+float det3(float in[3][3]) {
+  return in[0][0] * in[1][1] * in[2][2] + in[0][1] * in[1][2] * in[2][0] + in[0][2] * in[1][0] * in[2][1]
+  	- in[0][2] * in[1][1] * in[2][0] - in[0][1] * in[1][0] * in[2][2] - in[0][0] * in[1][2] * in[2][1];
+}
+
+float (*inverse3(float in[3][3], float out[3][3]))[3] {
+    float det = det3(in);
+    float adjugate[3][3];
+		adjugate3(in, adjugate);
+		divMat3ByScalar(adjugate, det, out);
+		return out;
+}
+
+static float* orthogonalizeProjection3(float project[3], float projected[3], float out[3]) {
+	float scalar;
+	float scalarNumerator = dot3(project, projected);
+	float scalarDenominator = dot3(projected, projected);
+	if(scalarDenominator == 0.0F) {
+		clearVec3(out);
+		return out;
+	}
+	scalar = scalarNumerator / scalarDenominator;
+	mulVec3ByScalar(projected, scalar, out);
+	return out;
+}
+
+float (*orthogonalize3(float in[3][3], float out[3][3]))[3] {
+	float temp[4][3];
+	normalize3(in[0], out[0]);
+	subVec3(in[1], orthogonalizeProjection3(in[1], in[0], temp[0]), temp[1]);
+	normalize3(temp[1], out[1]);
+	subVec3(in[2], subVec3(orthogonalizeProjection3(in[2], temp[1], temp[0]), orthogonalizeProjection3(in[2], in[0], temp[1]), temp[2]), temp[3]);
+	normalize3(temp[3], out[2]);
+	return out;
+}
+
+float *getTriangleCM3(float triangle[3][3], float out[3]) {
+	float temp[3];
+	divVec3ByScalar(addVec3(addVec3(triangle[0], triangle[1], temp), triangle[2], temp), 3.0F, out);
+	return out;
+}
+
+float (*genSkewMat3(float in[3], float out[3][3]))[3] {
+	memset(out, 0, 9 * sizeof(float));
+	out[0][1] = - in[2];
+	out[0][2] = in[1];
+	out[1][0] = in[2];
+	out[1][2] = - in[0];
+	out[2][0] = - in[1];
+	out[2][1] = in[0];
 	return out;
 }
 
@@ -502,6 +668,13 @@ float (*genRotationMat4(float rx, float ry, float rz, float mat[4][4]))[4] {
 	return mulMat4(mulMat4(zMat, yMat, temp), xMat, mat);
 }
 
+float *getAngleFromMat3(float in[3][3], float out[3]) {
+	out[0] = atan2(in[2][1], in[2][2]);
+	out[1] = atan2(-in[2][0], sqrt(in[2][1] * in[2][1] + in[2][2] * in[2][2]));
+	out[2] = atan2(in[1][0], in[0][0]);
+	return out;
+}
+
 float (*genLookAtMat4(float position[3], float target[3], float worldUp[3], float mat[4][4]))[4] {
 	float direction[3];
 	float right[3];
@@ -553,6 +726,25 @@ float (*genPerspectiveMat4(float fovY, float zNear, float zFar, float aspect, fl
 	return mat;
 }
 
+float (*genInertiaTensorBox(float mass, float width, float height, float depth, float out[3][3]))[3] {
+	float pre = mass / 12.0F;
+	memset(out, 0, 9 * sizeof(float));
+	out[0][0] = pre * (height * height + depth * depth);
+	out[1][1] = pre * (width * width + depth * depth);
+	out[2][2] = pre * (width * width + height * height);
+	return out;
+}
+
+void printVec3(float vec[3]) {
+	int i;
+	printf("(");
+	for(i = 0;i < 3;i++) {
+		printf("%10f", (double)vec[i]);
+		if(i != 2) printf(", ");
+	}
+	printf(")\n");
+}
+
 void printVec4(float vec[4]) {
 	int i;
 	printf("(");
@@ -561,6 +753,16 @@ void printVec4(float vec[4]) {
 		if(i != 3) printf(", ");
 	}
 	printf(")\n");
+}
+
+void printMat3(float mat[3][3]) {
+	int row, col;
+	for(row = 0;row < 3;row++) {
+		printf("| ");
+		for(col = 0;col < 3;col++) printf("%10f ", (double)mat[row][col]);
+		printf("|\n");
+	}
+	printf("\n");
 }
 
 void printMat4(float mat[4][4]) {
