@@ -80,7 +80,8 @@ static void impulseNodes(Node *nodeA, float normal[3], float point[3]) {
   float impulse[3];
   float impulseNumerator, impulseDenominator;
   addVec3(nodeA->velocity, cross(nodeA->angVelocity, point, temp[0]), velocity);
-  impulseNumerator = - (1.0F + 0.5F) * dot3(velocity, normal);
+  impulseNumerator = - (1.0F + nodeA->shape.restitution) * dot3(velocity, normal);
+  if(impulseNumerator <= 0) return;
   impulseDenominator = 1.0F / nodeA->shape.mass + dot3(cross(mulMat3Vec3(nodeA->shape.worldInverseInertia, cross(point, normal, temp[0]), temp[1]), point, temp[0]), normal);
   mulVec3ByScalar(normal, impulseNumerator / impulseDenominator, impulse);
   addVec3(nodeA->velocity, divVec3ByScalar(impulse, nodeA->shape.mass, temp[0]), nodeA->velocity);

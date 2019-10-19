@@ -309,17 +309,25 @@ int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points)
       float polygonBWorld[3][3];
       mulMat4ByTriangle(b.lastTransformation, polygonB, polygonBWorld);
       if(testCollisionTriangleTriangle(polygonAWorld, polygonBWorld)) {
-        float temp[3];
+        float temp[2][3];
+        float tempMat3[2][3][3];
         float (*normal)[3] = malloc(6 * sizeof(float));
         float (*point)[3] = malloc(6 * sizeof(float));
-        unsigned long *normalIndex = (unsigned long*)dataAt(&a.shape.normalIndices, indexA);
-        memcpy_s(normal[0], 3 * sizeof(float), dataAt(&a.shape.normals, *normalIndex), 3 * sizeof(float));
+        unsigned long *normalIndex;
+        getTriangleCM3(polygonAWorld, temp[0]);
+        subVec3(temp[0], a.position, point[0]);
+        getTriangleCM3(polygonBWorld, temp[0]);
+        subVec3(temp[0], b.position, point[1]);
+        normalIndex = (unsigned long*)dataAt(&a.shape.normalIndices, indexA);
+        memcpy_s(temp, 3 * sizeof(float), dataAt(&a.shape.normals, *normalIndex), 3 * sizeof(float));
+        transposeMat3(inverse3(convMat4toMat3(a.lastTransformation, tempMat3[0]), tempMat3[1]), tempMat3[0]);
+        mulMat3Vec3(tempMat3[0], temp[0], temp[1]);
+        normalize3(temp[1], normal[0]);
         normalIndex = (unsigned long*)dataAt(&b.shape.normalIndices, indexB);
-        memcpy_s(normal[1], 3 * sizeof(float), dataAt(&b.shape.normals, *normalIndex), 3 * sizeof(float));
-        getTriangleCM3(polygonAWorld, temp);
-        subVec3(temp, a.position, point[0]);
-        getTriangleCM3(polygonBWorld, temp);
-        subVec3(temp, b.position, point[1]);
+        memcpy_s(temp, 3 * sizeof(float), dataAt(&b.shape.normals, *normalIndex), 3 * sizeof(float));
+        transposeMat3(inverse3(convMat4toMat3(b.lastTransformation, tempMat3[0]), tempMat3[1]), tempMat3[0]);
+        mulMat3Vec3(tempMat3[0], temp[0], temp[1]);
+        normalize3(temp[1], normal[1]);
         push(normals, normal);
         push(points, point);
         collided = TRUE;
@@ -353,6 +361,7 @@ Shape initShape(float mass) {
   shape.uv = initVector();
   shape.uvIndices = initVector();
   shape.mass = mass;
+  shape.restitution = 0.0F;
   return shape;
 }
 

@@ -14,6 +14,7 @@ typedef struct {
 	Vector uv;
 	Vector uvIndices;
 	float mass;
+	float restitution;
 	float inertia[3][3];
 	float inverseInertia[3][3];
 	float worldInverseInertia[3][3];

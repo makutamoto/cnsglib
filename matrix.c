@@ -399,6 +399,12 @@ float (*cofactor3(const float in[3][3], int row, int col, float out[2][2]))[2] {
 			}
 			cords[0] += 1;
 	}
+	if(row == 1 ^ col == 1) {
+		float temp[2];
+		memcpy_s(temp, sizeof(temp), out[0], sizeof(temp));
+		memcpy_s(out[0], sizeof(temp), out[1], sizeof(temp));
+		memcpy_s(out[1], sizeof(temp), temp, sizeof(temp));
+	}
 	return out;
 }
 
