@@ -72,10 +72,21 @@ void drawNode(Node *node) {
   popTransformation();
 }
 
+void applyForce(Node *node, float force[3], int mask) {
+  float temp[3];
+  float tempMat4[4][4];
+  float tempMat3[3][3];
+  genRotationMat4(node->angle[0], node->angle[1], node->angle[2], tempMat4);
+  mulMat3Vec3(convMat4toMat3(tempMat4, tempMat3), force, temp);
+  if(mask & X_MASK) node->force[0] += temp[0];
+  if(mask & Y_MASK) node->force[1] += temp[1];
+  if(mask & Z_MASK) node->force[2] += temp[2];
+}
+
 float (*getNodeTransformation(Node node, float out[4][4]))[4] {
   float temp[2][4][4];
   genTranslationMat4(node.position[0], node.position[1], node.position[2], temp[0]);
-  genTranslationMat4(node.angle[0], node.angle[1], node.angle[2], temp[1]);
+  genRotationMat4(node.angle[0], node.angle[1], node.angle[2], temp[1]);
   mulMat4(temp[0], temp[1], out);
   return out;
 }
@@ -275,12 +286,12 @@ float (*mulMat4ByTriangle(float mat[4][4], float triangle[3][3], float out[3][3]
 
 Vector* getPolygons(Node node, Vector *polygons) {
 	size_t i1, i2;
-	resetIteration(&node.shape.indices);
-	for(i1 = 0;i1 < node.shape.indices.length / 3;i1++) {
+	resetIteration(&node.collisionShape.indices);
+	for(i1 = 0;i1 < node.collisionShape.indices.length / 3;i1++) {
     float *triangle = malloc(9 * sizeof(float));
     for(i2 = 0;i2 < 3;i2++) {
-			unsigned long index = *(unsigned long*)nextData(&node.shape.indices);
-      float *data = dataAt(&node.shape.vertices, index);
+			unsigned long index = *(unsigned long*)nextData(&node.collisionShape.indices);
+      float *data = dataAt(&node.collisionShape.vertices, index);
       triangle[i2 * 3] = data[0];
       triangle[i2 * 3 + 1] = data[1];
       triangle[i2 * 3 + 2] = data[2];
@@ -318,13 +329,13 @@ int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points)
         subVec3(temp[0], a.position, point[0]);
         getTriangleCM3(polygonBWorld, temp[0]);
         subVec3(temp[0], b.position, point[1]);
-        normalIndex = (unsigned long*)dataAt(&a.shape.normalIndices, indexA);
-        memcpy_s(temp, 3 * sizeof(float), dataAt(&a.shape.normals, *normalIndex), 3 * sizeof(float));
+        normalIndex = (unsigned long*)dataAt(&a.collisionShape.normalIndices, indexA);
+        memcpy_s(temp, 3 * sizeof(float), dataAt(&a.collisionShape.normals, *normalIndex), 3 * sizeof(float));
         transposeMat3(inverse3(convMat4toMat3(a.lastTransformation, tempMat3[0]), tempMat3[1]), tempMat3[0]);
         mulMat3Vec3(tempMat3[0], temp[0], temp[1]);
         normalize3(temp[1], normal[0]);
-        normalIndex = (unsigned long*)dataAt(&b.shape.normalIndices, indexB);
-        memcpy_s(temp, 3 * sizeof(float), dataAt(&b.shape.normals, *normalIndex), 3 * sizeof(float));
+        normalIndex = (unsigned long*)dataAt(&b.collisionShape.normalIndices, indexB);
+        memcpy_s(temp, 3 * sizeof(float), dataAt(&b.collisionShape.normals, *normalIndex), 3 * sizeof(float));
         transposeMat3(inverse3(convMat4toMat3(b.lastTransformation, tempMat3[0]), tempMat3[1]), tempMat3[0]);
         mulMat3Vec3(tempMat3[0], temp[0], temp[1]);
         normalize3(temp[1], normal[1]);

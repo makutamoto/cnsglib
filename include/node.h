@@ -6,6 +6,10 @@
 #include "./graphics.h"
 #include "./vector.h"
 
+#define X_MASK 1
+#define Y_MASK 2
+#define Z_MASK 4
+
 typedef struct {
 	Vector indices;
 	Vector vertices;
@@ -34,6 +38,7 @@ typedef struct _Node {
 	float aabb[3][2];
 	Image texture;
 	Shape shape;
+	Shape collisionShape;
 	unsigned int collisionFlags;
 	unsigned int collisionMaskActive;
 	unsigned int collisionMaskPassive;
@@ -58,6 +63,7 @@ Node initNodeUI(const char *id, Image image, unsigned char color);
 void discardNode(Node node);
 
 void drawNode(Node *node);
+void applyForce(Node *node, float force[3], int mask);
 float (*getNodeTransformation(Node node, float out[4][4]))[4];
 float (*getWorldTransfomration(Node node, float out[4][4]))[4];
 int testCollision(Node a, Node b);

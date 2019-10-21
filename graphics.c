@@ -27,6 +27,7 @@ static unsigned int screenSize[2];
 static unsigned long screenLength;
 static unsigned int halfScreenSize[2];
 
+static float zNearOver;
 static float camera[4][4];
 static float transformation[4][4];
 static Vector matrixStore;
@@ -88,6 +89,10 @@ void initGraphics(unsigned int width, unsigned int height) {
 
 void deinitGraphics(void) {
 	if(buffer) free(buffer);
+}
+
+void setZNear(float value) {
+	zNearOver = 1.0F / value;
 }
 
 void clearBuffer(unsigned char color) {
@@ -277,7 +282,7 @@ static BOOL calcIntersectionZ(float pointA[4], float pointB[4], float borderZ, f
 	out[0] = (pointA[0] - pointB[0]) * t + pointB[0];
 	out[1] = (pointA[1] - pointB[1]) * t + pointB[1];
 	out[2] = borderZ;
-	out[3] = pointA[3];
+	out[3] = zNearOver;
 	return TRUE;
 }
 

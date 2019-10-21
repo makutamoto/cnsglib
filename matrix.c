@@ -272,6 +272,14 @@ float	(*divMat3ByScalar(const float in[3][3], float scalar, float out[3][3]))[3]
 	return out;
 }
 
+float	(*divMat4ByScalar(const float in[4][4], float scalar, float out[4][4]))[4] {
+	int r, c;
+	for(r = 0;r < 4;r++) {
+		for(c = 0;c < 4;c++) out[r][c] = in[r][c] / scalar;
+	}
+	return out;
+}
+
 float	(*mulMat4(const float a[4][4], const float b[4][4], float out[4][4]))[4] {
 	float b0[4];
 	float b1[4];
@@ -437,11 +445,62 @@ float det3(float in[3][3]) {
   	- in[0][2] * in[1][1] * in[2][0] - in[0][1] * in[1][0] * in[2][2] - in[0][0] * in[1][2] * in[2][1];
 }
 
+float det4(float in[4][4]) {
+	float tempMat3[3][3];
+  float a = in[0][0] * det3(cofactor4(in, 0, 0, tempMat3));
+	float b = in[0][1] * det3(cofactor4(in, 0, 1, tempMat3));
+	float c = in[0][2] * det3(cofactor4(in, 0, 2, tempMat3));
+	float d = in[0][3] * det3(cofactor4(in, 0, 3, tempMat3));
+  return a - b + c - d;
+}
+
 float (*inverse3(float in[3][3], float out[3][3]))[3] {
     float det = det3(in);
     float adjugate[3][3];
 		adjugate3(in, adjugate);
 		divMat3ByScalar(adjugate, det, out);
+		return out;
+}
+
+float (*cofactor4(const float in[4][4], int row, int col, float out[3][3]))[3] {
+	int r, c;
+	int cords[2] = { 0, 0 };
+	for(r = 0;r < 4;r++) {
+			if(r == row) continue;
+			cords[1] = 0;
+			for(c = 0;c < 4;c++) {
+					if(c == col) continue;
+					out[cords[0]][cords[1]] = in[r][c];
+					cords[1] += 1;
+			}
+			cords[0] += 1;
+	}
+	return out;
+}
+
+float (*cofactorsMat4(const float in[4][4], float out[4][4]))[4] {
+	float temp[3][3];
+	int r, c;
+	for(r = 0;r < 4;r++) {
+		for(c = 0;c < 4;c++) {
+			out[r][c] = det3(cofactor4(in, r, c, temp));
+			if(r % 2 ^ c % 2) out[r][c] *= -1.0F;
+		}
+	}
+	return out;
+}
+
+float (*adjugate4(float in[4][4], float out[4][4]))[4] {
+	float temp[4][4];
+  transposeMat4(cofactorsMat4(in, temp), out);
+	return out;
+}
+
+float (*inverse4(float in[4][4], float out[4][4]))[4] {
+    float det = det4(in);
+    float adjugate[4][4];
+		adjugate4(in, adjugate);
+		divMat4ByScalar(adjugate, det, out);
 		return out;
 }
 

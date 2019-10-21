@@ -42,6 +42,7 @@ float	(*mulMat3(const float a[3][3], const float b[3][3], float out[3][3]))[3];
 float	(*mulMat4(const float a[4][4], const float b[4][4], float out[4][4]))[4];
 float	(*mulMat3ByScalar(const float in[3][3], float scalar, float out[3][3]))[3];
 float	(*divMat3ByScalar(const float in[3][3], float scalar, float out[3][3]))[3];
+float	(*divMat4ByScalar(const float in[4][4], float scalar, float out[4][4]))[4];
 float* mulMat3Vec3(const float mat[3][3], const float vec[3], float out[3]);
 float* mulMat4Vec4(const float mat[4][4], const float vec[4], float out[4]);
 float* mulMat4Vec4Proj(const float mat[4][4], const float vec[4], float out[4]);
@@ -49,11 +50,16 @@ float (*transposeMat3(const float mat[3][3], float out[3][3]))[3];
 float (*transposeMat4(const float mat[4][4], float out[4][4]))[4];
 
 float (*cofactor3(const float in[3][3], int row, int col, float out[2][2]))[2];
+float (*cofactor4(const float in[4][4], int row, int col, float out[3][3]))[3];
 float (*cofactorsMat3(const float in[3][3], float out[3][3]))[3];
-float (*adjugate4(float in[3][3], float out[3][3]))[3];
+float (*cofactorsMat4(const float in[4][4], float out[4][4]))[4];
+float (*adjugate3(float in[3][3], float out[3][3]))[3];
+float (*adjugate4(float in[4][4], float out[4][4]))[4];
 float det2(float in[2][2]);
 float det3(float in[3][3]);
+float det4(float in[4][4]);
 float (*inverse3(float in[3][3], float out[3][3]))[3];
+float (*inverse4(float in[4][4], float out[4][4]))[4];
 float (*orthogonalize3(float in[3][3], float out[3][3]))[3];
 
 float *getTriangleCM3(float triangle[3][3], float out[3]);

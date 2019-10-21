@@ -32,6 +32,7 @@ FontSJIS initFontSJIS(Image font0201, Image font0208, unsigned int width0201, un
 
 void initGraphics(unsigned int width, unsigned int height);
 void deinitGraphics(void);
+void setZNear(float value);
 void clearBuffer(unsigned char color);
 void clearZBuffer(void);
 void flushBuffer(void);

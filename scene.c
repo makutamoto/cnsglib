@@ -53,6 +53,9 @@ void drawScene(Scene *scene) {
     float cameraTarget[4];
     getWorldTransfomration(*scene->camera.parent, cameraParent);
     mulMat4Vec4(cameraParent, convVec3toVec4(scene->camera.position, temp), cameraPosition);
+    if(scene->camera.positionMask[0]) cameraPosition[0] = scene->camera.parent->position[0] + scene->camera.position[0];
+    if(scene->camera.positionMask[1]) cameraPosition[1] = scene->camera.parent->position[1] + scene->camera.position[1];
+    if(scene->camera.positionMask[2]) cameraPosition[2] = scene->camera.parent->position[2] + scene->camera.position[2];
     mulMat4Vec4(cameraParent, convVec3toVec4(scene->camera.target, temp), cameraTarget);
     genLookAtMat4(cameraPosition, cameraTarget, scene->camera.worldUp, lookAt);
   } else {
@@ -60,6 +63,7 @@ void drawScene(Scene *scene) {
   }
   genPerspectiveMat4(scene->camera.fov, scene->camera.nearLimit, scene->camera.farLimit, scene->camera.aspect, projection);
   mulMat4(projection, lookAt, camera);
+  setZNear(scene->camera.nearLimit);
   clearBuffer(scene->background);
   clearZBuffer();
   resetIteration(&scene->nodes);

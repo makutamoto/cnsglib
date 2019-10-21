@@ -8,6 +8,7 @@
 #include "../include/vector.h"
 
 typedef struct {
+  int positionMask[3];
   float position[3];
   float target[3];
   float worldUp[3];
