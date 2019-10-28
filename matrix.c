@@ -12,11 +12,39 @@ float *convVec3toVec4(const float in[3], float out[4]) {
 	return out;
 }
 
+float *convVec4toVec3(const float in[4], float out[3]) {
+	memcpy_s(out, 3 * sizeof(float), in, 3 * sizeof(float));
+	return out;
+}
+
+float *extractComponents3(const float in[3], int mask, float out[3]) {
+	out[0] = (mask & X_MASK) ? in[0] : 0.0F;
+	out[1] = (mask & Y_MASK) ? in[1] : 0.0F;
+	out[2] = (mask & Z_MASK) ? in[2] : 0.0F;
+	return out;
+}
+
 float (*convMat4toMat3(float in[4][4], float out[3][3]))[3] {
 	memcpy_s(out[0], 3 * sizeof(float), in[0], 3 * sizeof(float));
 	memcpy_s(out[1], 3 * sizeof(float), in[1], 3 * sizeof(float));
 	memcpy_s(out[2], 3 * sizeof(float), in[2], 3 * sizeof(float));
 	return out;
+}
+
+float* initVec3(float vec[3], int mask) {
+	vec[0] = (mask & X_MASK) ? 1.0F : 0.0F;
+	vec[1] = (mask & Y_MASK) ? 1.0F : 0.0F;
+	vec[2] = (mask & Z_MASK) ? 1.0F : 0.0F;
+	return vec;
+}
+
+int equalVec3(float a[3], float b[3]) {
+	if(a[0] == b[0] && a[1] == b[1] && a[2] == b[2]) return TRUE;
+	return FALSE;
+}
+
+float cosVec3(float a[3], float b[3]) {
+	return dot3(a, b) / (length3(a) * length3(b));
 }
 
 float *clearVec3(float in[3]) {
@@ -793,6 +821,15 @@ float (*genInertiaTensorBox(float mass, float width, float height, float depth, 
 	out[2][2] = pre * (width * width + height * height);
 	return out;
 }
+
+// float (*genInertiaTensorCylinder(float mass, float radius, float height, float out[3][3]))[3] {
+// 	float pre = mass / 12.0F * (3.0F * radius * radius + height * height);
+// 	memset(out, 0, 9 * sizeof(float));
+// 	out[0][0] = pre;
+// 	out[1][1] = pre;
+// 	out[2][2] = mass / 2.0F * ();
+// 	return out;
+// }
 
 void printVec3(float vec[3]) {
 	int i;

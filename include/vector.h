@@ -16,12 +16,15 @@ typedef struct _VectorItem {
 	void *data;
 } VectorItem;
 
+#define iterf(vector, data) for(resetIteration((vector));nextIter((vector), (void**)(data));)
+
 Vector initVector(void);
 void clearVector(Vector *vector);
 void freeVector(Vector *vector);
 
 void resetIteration(Vector *vector);
 void* nextData(Vector *vector);
+int nextIter(Vector *vector, void **data);
 void* previousData(Vector *vector);
 VectorItem* ItemAt(Vector *vector, size_t index);
 void* dataAt(Vector *vector, size_t index);

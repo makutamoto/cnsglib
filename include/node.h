@@ -6,10 +6,6 @@
 #include "./graphics.h"
 #include "./vector.h"
 
-#define X_MASK 1
-#define Y_MASK 2
-#define Z_MASK 4
-
 typedef struct {
 	Vector indices;
 	Vector vertices;
@@ -19,6 +15,9 @@ typedef struct {
 	Vector uvIndices;
 	float mass;
 	float restitution;
+	float staticFriction;
+	float dynamicFriction;
+	float rollingFriction;
 	float inertia[3][3];
 	float inverseInertia[3][3];
 	float worldInverseInertia[3][3];
@@ -63,7 +62,7 @@ Node initNodeUI(const char *id, Image image, unsigned char color);
 void discardNode(Node node);
 
 void drawNode(Node *node);
-void applyForce(Node *node, float force[3], int mask);
+void applyForce(Node *node, float force[3], int mask, int rotation);
 float (*getNodeTransformation(Node node, float out[4][4]))[4];
 float (*getWorldTransfomration(Node node, float out[4][4]))[4];
 int testCollision(Node a, Node b);
@@ -74,7 +73,7 @@ Shape initShape(float mass);
 Shape initShapePlane(float width, float height, unsigned char color);
 Shape initShapePlaneInv(float width, float height, unsigned char color);
 Shape initShapeBox(float width, float height, float depth, unsigned char color);
-int initShapeFromObj(Shape *shape, char *filename);
+int initShapeFromObj(Shape *shape, char *filename, float mass);
 void discardShape(Shape shape);
 
 #endif

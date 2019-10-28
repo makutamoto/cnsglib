@@ -72,12 +72,16 @@ void drawNode(Node *node) {
   popTransformation();
 }
 
-void applyForce(Node *node, float force[3], int mask) {
+void applyForce(Node *node, float force[3], int mask, int rotation) {
   float temp[3];
   float tempMat4[4][4];
   float tempMat3[3][3];
-  genRotationMat4(node->angle[0], node->angle[1], node->angle[2], tempMat4);
-  mulMat3Vec3(convMat4toMat3(tempMat4, tempMat3), force, temp);
+  if(rotation) {
+    genRotationMat4(node->angle[0], node->angle[1], node->angle[2], tempMat4);
+    mulMat3Vec3(convMat4toMat3(tempMat4, tempMat3), force, temp);
+  } else {
+    memcpy_s(temp, SIZE_VEC3, force, SIZE_VEC3);
+  }
   if(mask & X_MASK) node->force[0] += temp[0];
   if(mask & Y_MASK) node->force[1] += temp[1];
   if(mask & Z_MASK) node->force[2] += temp[2];
@@ -373,6 +377,9 @@ Shape initShape(float mass) {
   shape.uvIndices = initVector();
   shape.mass = mass;
   shape.restitution = 0.0F;
+  shape.staticFriction = 0.5F;
+  shape.dynamicFriction = 0.1F;
+  shape.rollingFriction = 0.1F;
   return shape;
 }
 
@@ -598,14 +605,14 @@ static size_t getUntil(char *string, char *separators, size_t index, char *out, 
   return index + 1;
 }
 
-int initShapeFromObj(Shape *shape, char *filename) {
+int initShapeFromObj(Shape *shape, char *filename, float mass) {
   FILE *file;
   char buffer[OBJ_LINE_BUFFER_SIZE];
   char temp[OBJ_WORD_BUFFER_SIZE];
   size_t line = 1;
   float aabb[3][2];
   BOOL aabbCleared = FALSE;
-  *shape = initShape(1.0F);
+  *shape = initShape(mass);
   if(fopen_s(&file, filename, "r")) {
     fputs("File not found.", stderr);
     fclose(file);

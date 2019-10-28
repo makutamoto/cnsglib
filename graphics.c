@@ -282,7 +282,7 @@ static BOOL calcIntersectionZ(float pointA[4], float pointB[4], float borderZ, f
 	out[0] = (pointA[0] - pointB[0]) * t + pointB[0];
 	out[1] = (pointA[1] - pointB[1]) * t + pointB[1];
 	out[2] = borderZ;
-	out[3] = zNearOver;
+	out[3] = zNearOver / 2.0F;
 	return TRUE;
 }
 
@@ -421,10 +421,10 @@ void cropImage(Image dest, Image src, unsigned int xth, unsigned int yth) {
 	unsigned int x = dest.width * xth;
 	unsigned int y = dest.height * yth;
 	if(dest.width > src.width || dest.height > src.height) {
-		fputs("cropImage: the cropped size is bigger than original size.", stderr);
+		fprintf(stderr, "cropImage: the cropped size is bigger than original size.\n");
 	}
 	if(xth >= src.width / dest.width || yth >= src.height / dest.height) {
-		fputs("cropImage: the position is out of range.", stderr);
+		fprintf(stderr, "cropImage: the position is out of range: (%u, %u)\n", xth, yth);
 	}
 	for(iy = 0;iy + y < src.height && iy < dest.height;iy++) {
 		for(ix = 0;ix + x < src.width && ix < dest.width;ix++) {

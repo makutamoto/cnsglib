@@ -11,7 +11,6 @@ void resetIteration(Vector *vector) {
 	vector->currentItem = NULL;
 }
 
-// pointer?
 void* nextData(Vector *vector) {
 	if(vector->currentItem == NULL) {
 		if(vector->firstItem == NULL) {
@@ -27,6 +26,15 @@ void* nextData(Vector *vector) {
 		vector->currentItem = vector->currentItem->nextItem;
 	}
 	return vector->currentItem->data;
+}
+
+int nextIter(Vector *vector, void **data) {
+	*data = nextData(vector);
+	if(*data) {
+		return TRUE;
+	} else {
+		return FALSE;
+	}
 }
 
 void* previousData(Vector *vector) {
