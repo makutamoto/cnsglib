@@ -10,8 +10,11 @@
 
 #define X_MASK 1
 #define Y_MASK 2
+#define XY_MASK 3
 #define Z_MASK 4
 #define XZ_MASK 5
+#define YZ_MASK 6
+#define XYZ_MASK 7
 
 float *convVec3toVec4(const float in[3], float out[4]);
 float *convVec4toVec3(const float in[4], float out[3]);
@@ -20,6 +23,7 @@ float *extractComponents3(const float in[3], int mask, float out[3]);
 float (*convMat4toMat3(float in[4][4], float out[3][3]))[3];
 
 float* initVec3(float vec[3], int mask);
+float* setVec3(float vec[3], float val, int mask);
 int equalVec3(float a[3], float b[3]);
 float cosVec3(float a[3], float b[3]);
 float *clearVec3(float in[3]);

@@ -87,6 +87,11 @@ void initGraphics(unsigned int width, unsigned int height) {
 	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 }
 
+unsigned int* getScreenSize(unsigned int out[2]) {
+	memcpy_s(out, sizeof(screenSize), screenSize, sizeof(screenSize));
+	return out;
+}
+
 void deinitGraphics(void) {
 	if(buffer) free(buffer);
 }

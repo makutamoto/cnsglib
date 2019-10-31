@@ -1,5 +1,7 @@
 #include<Windows.h>
+#include<stdarg.h>
 
+#include "./include/borland.h"
 #include "./include/vector.h"
 
 Vector initVector(void) {
@@ -65,6 +67,37 @@ int push(Vector *vector, void *data) {
 	vector->lastItem = newItem;
 	vector->length += 1;
 	vector->cacheItem = NULL;
+	return TRUE;
+}
+
+int pushAlloc(Vector *vector, size_t size, void *data) {
+	void *mem = malloc(size);
+	memcpy_s(mem, size, data, size);
+	if(push(vector, mem)) return TRUE;
+	return FALSE;
+}
+
+int pushUntilNull(Vector *vector, ...) {
+	va_list ap;
+	void *data;
+	va_start(ap, vector);
+	data = va_arg(ap, void*);
+	while(data) {
+		if(!push(vector, data)) return FALSE;
+		data = va_arg(ap, void*);
+	}
+	va_end(ap);
+	return TRUE;
+}
+
+int pushAllocUntilNull(Vector *vector, size_t size, ...) {
+	va_list ap;
+	void *data;
+	va_start(ap, size);
+	for(data = va_arg(ap, void*);data != NULL;data = va_arg(ap, void*)) {
+		if(!pushAlloc(vector, size, data)) return FALSE;
+	}
+	va_end(ap);
 	return TRUE;
 }
 

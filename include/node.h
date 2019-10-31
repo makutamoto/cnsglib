@@ -46,8 +46,10 @@ typedef struct _Node {
 	struct _Node *parent;
 	Vector children;
 	int (*behaviour)(struct _Node*);
-	BOOL isPhysicsEnabled;
-	BOOL isInterface;
+	int isPhysicsEnabled;
+	int isInterface;
+	int isVisible;
+	int isThrough;
 	void *data;
 }	Node;
 
@@ -59,6 +61,7 @@ typedef struct {
 
 Node initNode(const char *id, Image image);
 Node initNodeUI(const char *id, Image image, unsigned char color);
+Node initNodeText(const char *id, float px, float py, unsigned int sx, unsigned int sy);
 void discardNode(Node node);
 
 void drawNode(Node *node);
@@ -72,8 +75,9 @@ void addIntervalEventNode(Node *node, unsigned int milliseconds, void (*callback
 Shape initShape(float mass);
 Shape initShapePlane(float width, float height, unsigned char color);
 Shape initShapePlaneInv(float width, float height, unsigned char color);
-Shape initShapeBox(float width, float height, float depth, unsigned char color);
+Shape initShapeBox(float width, float height, float depth, unsigned char color, float mass);
 int initShapeFromObj(Shape *shape, char *filename, float mass);
+float (*getShapeAABB(Shape shape, float transformation[4][4], float out[3][2]))[2];
 void discardShape(Shape shape);
 
 #endif

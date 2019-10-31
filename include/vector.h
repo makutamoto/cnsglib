@@ -30,6 +30,9 @@ VectorItem* ItemAt(Vector *vector, size_t index);
 void* dataAt(Vector *vector, size_t index);
 
 int push(Vector *vector, void *data);
+int pushAlloc(Vector *vector, size_t size, void *data);
+int pushUntilNull(Vector *vector, ...);
+int pushAllocUntilNull(Vector *vector, size_t size, ...);
 void* pop(Vector *vector);
 int insertAt(Vector *vector, size_t index, void *data);
 void* removeAt(Vector *vector, size_t index);

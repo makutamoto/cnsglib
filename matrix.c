@@ -38,6 +38,13 @@ float* initVec3(float vec[3], int mask) {
 	return vec;
 }
 
+float* setVec3(float vec[3], float val, int mask) {
+	if(mask & X_MASK) vec[0] = val;
+	if(mask & Y_MASK) vec[1] = val;
+	if(mask & Z_MASK) vec[2] = val;
+	return vec;
+}
+
 int equalVec3(float a[3], float b[3]) {
 	if(a[0] == b[0] && a[1] == b[1] && a[2] == b[2]) return TRUE;
 	return FALSE;

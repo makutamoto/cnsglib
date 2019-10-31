@@ -31,6 +31,7 @@ extern Image NO_IMAGE;
 FontSJIS initFontSJIS(Image font0201, Image font0208, unsigned int width0201, unsigned int width0208, unsigned int height);
 
 void initGraphics(unsigned int width, unsigned int height);
+unsigned int* getScreenSize(unsigned int out[2]);
 void deinitGraphics(void);
 void setZNear(float value);
 void clearBuffer(unsigned char color);

@@ -8,6 +8,7 @@
 #include "./include/graphics.h"
 #include "./include/vector.h"
 #include "./include/matrix.h"
+#include "./include/colors.h"
 
 #define OBJ_LINE_BUFFER_SIZE 128
 #define OBJ_WORD_BUFFER_SIZE 32
@@ -21,20 +22,27 @@ Node initNode(const char *id, Image image) {
   node.scale[2] = 1.0;
 	node.texture = image;
   node.children = initVector();
+  node.isVisible = TRUE;
   return node;
 }
 
 Node initNodeUI(const char *id, Image image, unsigned char color) {
   Node node;
-  memset(&node, 0, sizeof(Node));
-  memcpy_s(node.id, sizeof(node.id), id, min(sizeof(node.id), strlen(id)));
-  node.scale[0] = 1.0F;
-  node.scale[1] = 1.0F;
-  node.scale[2] = 1.0F;
-	node.texture = image;
+  node = initNode(id, image);
   node.shape = initShapePlaneInv(1.0F, 1.0F, color);
-  node.children = initVector();
   node.isInterface = TRUE;
+  return node;
+}
+
+Node initNodeText(const char *id, float px, float py, unsigned int sx, unsigned int sy) {
+  Node node;
+  unsigned int size[2];
+  getScreenSize(size);
+  node = initNodeUI(id, initImage(sx, sy, BLACK, BLACK), NULL_COLOR);
+  node.position[0] = px * 100.0F / size[0] + (sign(px) == -1 ? 100.0F : 0.0F);
+  node.position[1] = py * 100.0F / size[1] + (sign(py) == -1 ? 100.0F : 0.0F);
+	node.scale[0] = sx * 100.0F / size[0];
+	node.scale[1] = sy * 100.0F / size[1];
   return node;
 }
 
@@ -59,9 +67,13 @@ void drawNode(Node *node) {
     scaleTransformation(node->scale[0], node->scale[1], node->scale[2]);
   }
   getTransformation(node->lastTransformation);
-  clearAABB();
-	fillPolygons(node->shape.vertices, node->shape.indices, node->texture, node->shape.uv, node->shape.uvIndices);
-  getAABB(node->aabb);
+  if(node->isVisible) {
+    clearAABB();
+    fillPolygons(node->shape.vertices, node->shape.indices, node->texture, node->shape.uv, node->shape.uvIndices);
+    getAABB(node->aabb);
+  } else {
+    getShapeAABB(node->shape, node->lastTransformation, node->aabb);
+  }
   popTransformation();
   resetIteration(&node->children);
   child = previousData(&node->children);
@@ -115,13 +127,14 @@ int testCollision(Node a, Node b) {
 }
 
 int calcPlaneEquation(const float triangle[3][3], const float target[3][3], float n[3], float *d, float dv[3]) {
-  float temp[2][3];
-  cross(subVec3(triangle[1], triangle[0], temp[0]), subVec3(triangle[2], triangle[0], temp[1]), n);
-  *d = dot3(mulVec3ByScalar(n, -1.0F, temp[0]), triangle[0]);
+  float temp[3][3];
+  cross(subVec3(triangle[1], triangle[0], temp[0]), subVec3(triangle[2], triangle[0], temp[1]), temp[2]);
+  normalize3(temp[2], n);
+  *d = - dot3(n, triangle[0]);
   dv[0] = dot3(n, target[0]) + *d;
   dv[1] = dot3(n, target[1]) + *d;
   dv[2] = dot3(n, target[2]) + *d;
-  if(dv[0] != 0 && dv[1] != 0 && dv[2] != 0) {
+  if(dv[0] != 0.0F && dv[1] != 0.0F && dv[2] != 0.0F) {
     int signDv1 = sign(dv[1]);
     if(sign(dv[0]) == signDv1 && signDv1 == sign(dv[2])) {
       return -1;
@@ -130,10 +143,12 @@ int calcPlaneEquation(const float triangle[3][3], const float target[3][3], floa
   return 0;
 }
 
-void calcLineParameters(const float triangle[3][3], const float d[3], const float dv[3], float t[2]) {
+static void calcLineParameters(const float triangle[3][3], const float d[3], const float dv[3], float t[2], float vertices[2][3]) {
+  float tempVec3[2][3];
   float pv[3];
   int signA, signB, signC;
   int indexA, indexB, indexC;
+  float ratio[2];
   signA = sign(dv[0]);
   signB = sign(dv[1]);
   signC = sign(dv[2]);
@@ -153,8 +168,12 @@ void calcLineParameters(const float triangle[3][3], const float d[3], const floa
   pv[0] = dot3(d, triangle[0]);
   pv[1] = dot3(d, triangle[1]);
   pv[2] = dot3(d, triangle[2]);
-  t[0] = pv[indexA] + (pv[indexB] - pv[indexA]) * dv[indexA] / (dv[indexA] - dv[indexB]);
-  t[1] = pv[indexC] + (pv[indexB] - pv[indexC]) * dv[indexC] / (dv[indexC] - dv[indexB]);
+  ratio[0] = dv[indexA] / (dv[indexA] - dv[indexB]);
+  ratio[1] = dv[indexC] / (dv[indexC] - dv[indexB]);
+  t[0] = pv[indexA] + (pv[indexB] - pv[indexA]) * ratio[0];
+  t[1] = pv[indexC] + (pv[indexB] - pv[indexC]) * ratio[1];
+  addVec3(triangle[indexB], mulVec3ByScalar(subVec3(triangle[indexA], triangle[indexB], tempVec3[0]), ratio[0], tempVec3[1]), vertices[0]);
+  addVec3(triangle[indexB], mulVec3ByScalar(subVec3(triangle[indexC], triangle[indexB], tempVec3[0]), ratio[1], tempVec3[1]), vertices[1]);
 }
 
 void projectTriangleOnAxes(const float triangle[3][3], int indexA, int indexB, float out[3][3]) {
@@ -200,17 +219,18 @@ int pointInTriangle(const float triangle[3][3], const float point[3]) {
   return sign(zA) == signB && signB == sign(zC);
 }
 
-int testCollisionTriangleTriangle(const float a[3][3], const float b[3][3]) {
+static int testCollisionTriangleTriangle(const float a[3][3], const float b[3][3], Vector *points) {
   // using Moller's algorithm: A Fast Triangle-Triangle Intersection Test
+  float tempVec3[2][3];
   float n1[3], n2[3];
   float d1, d2;
   float dv1[3], dv2[3];
   if(calcPlaneEquation(b, a, n2, &d2, dv2) || calcPlaneEquation(a, b, n1, &d1, dv1)) return FALSE;
-  if(dv1[0] == 0 && dv1[1] == 0 && dv1[2] == 0) {
-    int i;
+  if((dv1[0] == 0.0F && dv1[1] == 0.0F && dv1[2] == 0.0F) || (dv2[0] == 0.0F && dv2[1] == 0.0F && dv2[2] == 0.0F)) {
+    // int i;
     float triangleAOnAxes[3][3][3], triangleBOnAxes[3][3][3];
     float areas[3];
-    float triangleAEdges[3][2][3], triangleBEdges[3][2][3];
+    // float triangleAEdges[3][2][3], triangleBEdges[3][2][3];
     int triangleIndex;
     projectTriangleOnAxes(a, 0, 1, triangleAOnAxes[0]);
     projectTriangleOnAxes(a, 1, 2, triangleAOnAxes[1]);
@@ -225,7 +245,11 @@ int testCollisionTriangleTriangle(const float a[3][3], const float b[3][3]) {
       if(areas[0] > areas[2]) {
         triangleIndex = 0;
       } else {
-        triangleIndex = 2;
+        if(areas[2] > areas[1]) {
+          triangleIndex = 2;
+        } else {
+          triangleIndex = 1;
+        }
       }
     } else {
       if(areas[1] > areas[2]) {
@@ -234,43 +258,68 @@ int testCollisionTriangleTriangle(const float a[3][3], const float b[3][3]) {
         triangleIndex = 2;
       }
     }
-    edgesOfTriangle(triangleAOnAxes[triangleIndex], triangleAEdges);
-    edgesOfTriangle(triangleBOnAxes[triangleIndex], triangleBEdges);
-    for(i = 0;i < 3;i++) {
-      if(testLine2dIntersection(triangleAEdges[i], triangleBEdges[0]) ||
-        testLine2dIntersection(triangleAEdges[i], triangleBEdges[1]) ||
-        testLine2dIntersection(triangleAEdges[i], triangleBEdges[2])) {
-          return TRUE;
-      }
+    // edgesOfTriangle(triangleAOnAxes[triangleIndex], triangleAEdges);
+    // edgesOfTriangle(triangleBOnAxes[triangleIndex], triangleBEdges);
+    // for(i = 0;i < 3;i++) {
+    //   if(testLine2dIntersection(triangleAEdges[i], triangleBEdges[0]) ||
+    //     testLine2dIntersection(triangleAEdges[i], triangleBEdges[1]) ||
+    //     testLine2dIntersection(triangleAEdges[i], triangleBEdges[2])) {
+    //       // puts("A");
+    //       // pushAllocUntilNull(points, SIZE_VEC3, a[0], a[1], a[2], NULL);
+    //       getTriangleCM3(a, tempVec3[0]);
+    //       pushAlloc(points, SIZE_VEC3, tempVec3[0]);
+    //       return 1;
+    //   }
+    // }
+    if(pointInTriangle(triangleAOnAxes[triangleIndex], triangleBOnAxes[triangleIndex][0])) {
+      pushAllocUntilNull(points, SIZE_VEC3, b[0], b[1], b[2], NULL);
+      return 3;
     }
-    if(pointInTriangle(triangleAOnAxes[triangleIndex], triangleBOnAxes[triangleIndex][0])
-      || pointInTriangle(triangleBOnAxes[triangleIndex], triangleAOnAxes[triangleIndex][0])) return TRUE;
+    if(pointInTriangle(triangleBOnAxes[triangleIndex], triangleAOnAxes[triangleIndex][0])) {
+      pushAllocUntilNull(points, SIZE_VEC3, a[0], a[1], a[2], NULL);
+      return 3;
+    }
   } else {
     float d[3];
     float t1[2], t2[2];
+    float v1[2][3], v2[2][3];
+    float *v1MinMax[2], *v2MinMax[2];
     float t1MinMax[2], t2MinMax[2];
-    cross(n1, n2, d);
-    calcLineParameters(a, d, dv1, t1);
-    calcLineParameters(b, d, dv2, t2);
+    cross(n1, n2, tempVec3[0]);
+    normalize3(tempVec3[0], d);
+    calcLineParameters(a, d, dv1, t1, v1);
+    calcLineParameters(b, d, dv2, t2, v2);
     if(t1[0] > t1[1]) {
       t1MinMax[0] = t1[1];
       t1MinMax[1] = t1[0];
+      v1MinMax[0] = v1[1];
+      v1MinMax[1] = v1[0];
     } else {
       t1MinMax[0] = t1[0];
       t1MinMax[1] = t1[1];
+      v1MinMax[0] = v1[0];
+      v1MinMax[1] = v1[1];
     }
     if(t2[0] > t2[1]) {
       t2MinMax[0] = t2[1];
       t2MinMax[1] = t2[0];
+      v2MinMax[0] = v2[1];
+      v2MinMax[1] = v2[0];
     } else {
       t2MinMax[0] = t2[0];
       t2MinMax[1] = t2[1];
+      v2MinMax[0] = v2[0];
+      v2MinMax[1] = v2[1];
     }
     if(!(t1MinMax[1] < t2MinMax[0] || t2MinMax[1] < t1MinMax[0])) {
-      return TRUE;
+      float *contacts[2];
+      contacts[0] = (t1MinMax[0] > t2MinMax[0]) ? v1MinMax[0] : v2MinMax[0];
+      contacts[1] = (t1MinMax[1] < t2MinMax[1]) ? v1MinMax[1] : v2MinMax[1];
+      pushAllocUntilNull(points, SIZE_VEC3, contacts[0], contacts[1], NULL);
+      return 2;
     }
   }
-  return FALSE;
+  return 0;
 }
 
 float (*mulMat4ByTriangle(float mat[4][4], float triangle[3][3], float out[3][3]))[3] {
@@ -306,6 +355,7 @@ Vector* getPolygons(Node node, Vector *polygons) {
 }
 
 int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points) {
+  int i;
   unsigned long indexA = 0;
   Vector polygonsA = initVector();
   Vector polygonsB = initVector();
@@ -322,17 +372,14 @@ int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points)
     polygonB = nextData(&polygonsB);
     while(polygonB) {
       float polygonBWorld[3][3];
+      int nofNormals;
       mulMat4ByTriangle(b.lastTransformation, polygonB, polygonBWorld);
-      if(testCollisionTriangleTriangle(polygonAWorld, polygonBWorld)) {
+      nofNormals = testCollisionTriangleTriangle(polygonAWorld, polygonBWorld, points);
+      if(nofNormals) {
         float temp[2][3];
         float tempMat3[2][3][3];
         float (*normal)[3] = malloc(6 * sizeof(float));
-        float (*point)[3] = malloc(6 * sizeof(float));
         unsigned long *normalIndex;
-        getTriangleCM3(polygonAWorld, temp[0]);
-        subVec3(temp[0], a.position, point[0]);
-        getTriangleCM3(polygonBWorld, temp[0]);
-        subVec3(temp[0], b.position, point[1]);
         normalIndex = (unsigned long*)dataAt(&a.collisionShape.normalIndices, indexA);
         memcpy_s(temp, 3 * sizeof(float), dataAt(&a.collisionShape.normals, *normalIndex), 3 * sizeof(float));
         transposeMat3(inverse3(convMat4toMat3(a.lastTransformation, tempMat3[0]), tempMat3[1]), tempMat3[0]);
@@ -343,8 +390,7 @@ int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points)
         transposeMat3(inverse3(convMat4toMat3(b.lastTransformation, tempMat3[0]), tempMat3[1]), tempMat3[0]);
         mulMat3Vec3(tempMat3[0], temp[0], temp[1]);
         normalize3(temp[1], normal[1]);
-        push(normals, normal);
-        push(points, point);
+        for(i = 0;i < nofNormals;i++) push(normals, normal);
         collided = TRUE;
       }
       polygonB = nextData(&polygonsB);
@@ -378,8 +424,8 @@ Shape initShape(float mass) {
   shape.mass = mass;
   shape.restitution = 0.0F;
   shape.staticFriction = 0.5F;
-  shape.dynamicFriction = 0.1F;
-  shape.rollingFriction = 0.1F;
+  shape.dynamicFriction = 0.3F;
+  shape.rollingFriction = 0.5F;
   return shape;
 }
 
@@ -483,7 +529,7 @@ Shape initShapePlaneInv(float width, float height, unsigned char color) {
   return shape;
 }
 
-Shape initShapeBox(float width, float height, float depth, unsigned char color) {
+Shape initShapeBox(float width, float height, float depth, unsigned char color, float mass) {
   int i;
   float halfWidth = width / 2.0F;
   float halfHeight = height / 2.0F;
@@ -514,6 +560,7 @@ Shape initShapeBox(float width, float height, float depth, unsigned char color) 
     { 0.0F, 0.0F }, { 0.0F, 1.0F }, { 1.0F, 0.0F }, { 1.0F, 1.0F },
     { 0.0F, 0.0F }, { 1.0F, 0.0F }, { 0.0F, 1.0F }, { 1.0F, 1.0F },
   };
+  shape.mass = mass;
   generated_vertices[0] = initVertex(-halfWidth, -halfHeight, halfDepth, color);
   generated_vertices[1] = initVertex(-halfWidth, halfHeight, halfDepth, color);
   generated_vertices[2] = initVertex(halfWidth, -halfHeight, halfDepth, color);
@@ -789,6 +836,32 @@ int initShapeFromObj(Shape *shape, char *filename, float mass) {
   inverse3(shape->inertia, shape->inverseInertia);
   fclose(file);
   return 0;
+}
+
+float (*getShapeAABB(Shape shape, float transformation[4][4], float out[3][2]))[2] {
+  Vertex *vertex;
+  int first = TRUE;
+  iterf(&shape.vertices, &vertex) {
+    float transformed[4];
+    mulMat4Vec4(transformation, vertex->components, transformed);
+    if(first) {
+      out[0][0] = transformed[0];
+      out[0][1] = transformed[0];
+      out[1][0] = transformed[1];
+      out[1][1] = transformed[1];
+      out[2][0] = transformed[2];
+      out[2][1] = transformed[2];
+      first = FALSE;
+    } else {
+      out[0][0] = min(out[0][0], transformed[0]);
+      out[0][1] = max(out[0][1], transformed[0]);
+      out[1][0] = min(out[1][0], transformed[1]);
+      out[1][1] = max(out[1][1], transformed[1]);
+      out[2][0] = min(out[2][0], transformed[2]);
+      out[2][1] = max(out[2][1], transformed[2]);
+    }
+  }
+  return out;
 }
 
 void discardShape(Shape shape) {
