@@ -16,6 +16,11 @@ typedef struct _VectorItem {
 	void *data;
 } VectorItem;
 
+typedef struct {
+	Vector *vector;
+	VectorItem *currentItem;
+} VectorIter;
+
 #define iterf(vector, data) for(resetIteration((vector));nextIter((vector), (void**)(data));)
 
 Vector initVector(void);
@@ -37,5 +42,9 @@ void* pop(Vector *vector);
 int insertAt(Vector *vector, size_t index, void *data);
 void* removeAt(Vector *vector, size_t index);
 void removeByData(Vector *vector, void *data);
+
+VectorIter initVectorIter(Vector *vector);
+void* nextDataIter(VectorIter *iter);
+void* previousDataIter(VectorIter *iter);
 
 #endif

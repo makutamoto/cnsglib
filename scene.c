@@ -71,8 +71,6 @@ void drawScene(Scene *scene) {
   iterf(&scene->nodes, &node) {
     setCameraMat4(camera);
     drawNode(node);
-    clearVector(&node->collisionTargets);
-    node->collisionFlags = 0;
   }
   flushBuffer();
 }
@@ -118,10 +116,10 @@ static void rubNodes(Node *nodeA, Node *nodeB, const float normal[3], float stat
 
 void updateScene(Scene *scene, float elapsed) {
   Node *node;
+  NodeIter iter;
   IntervalEventScene *intervalScene;
-  resetIteration(&scene->nodes);
-  node = nextData(&scene->nodes);
-  while(node) {
+  iter = initNodeIter(&scene->nodes);
+  for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) {
     float temp[3];
     float tempMat4[4][4];
     float tempMat3[2][3][3];
@@ -138,16 +136,17 @@ void updateScene(Scene *scene, float elapsed) {
     addVec3(node->angMomentum, mulVec3ByScalar(node->torque, elapsed, temp), node->angMomentum);
     mulMat3(orientation, mulMat3(node->shape.inverseInertia, transposeMat3(orientation, tempMat3[0]), tempMat3[1]), node->shape.worldInverseInertia);
     mulMat3Vec3(node->shape.worldInverseInertia, node->angMomentum, node->angVelocity);
-    node = nextData(&scene->nodes);
+    clearVector(&node->collisionTargets);
+    node->collisionFlags = 0;
   }
-  iterf(&scene->nodes, &node) {
+  for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) {
     if(node->collisionMaskActive || node->collisionMaskPassive) {
       Node nodeTemp;
       Node *collisionTarget;
-      VectorItem *item = scene->nodes.currentItem;
+      NodeIter targetIter = initNodeIter(&node->children);
       nodeTemp = *node;
-      collisionTarget = (Node*)nextData(&scene->nodes);
-      while(collisionTarget) {
+      targetIter.currentIter.currentItem = iter.currentIter.currentItem;
+      for(collisionTarget = nextNode(&targetIter);collisionTarget != NULL;collisionTarget = nextNode(&targetIter)) {
         unsigned int flagsA = node->collisionMaskPassive & collisionTarget->collisionMaskActive;
         unsigned int flagsB = node->collisionMaskActive & collisionTarget->collisionMaskPassive;
         unsigned int flags = flagsA | flagsB;
@@ -206,14 +205,10 @@ void updateScene(Scene *scene, float elapsed) {
             }
           }
         }
-        collisionTarget = (Node*)nextData(&scene->nodes);
       }
-      scene->nodes.currentItem = item;
     }
   }
-  resetIteration(&scene->nodes);
-  node = previousData(&scene->nodes);
-  while(node) {
+  for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) {
     IntervalEventNode *interval;
     clearVec3(node->force);
     clearVec3(node->torque);
@@ -238,7 +233,6 @@ void updateScene(Scene *scene, float elapsed) {
       }
       interval = nextData(&node->intervalEvents);
     }
-    node = previousData(&scene->nodes);
   }
   resetIteration(&scene->intervalEvents);
   intervalScene = nextData(&scene->intervalEvents);

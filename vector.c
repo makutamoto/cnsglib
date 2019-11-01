@@ -102,8 +102,11 @@ int pushAllocUntilNull(Vector *vector, size_t size, ...) {
 }
 
 void* pop(Vector *vector) {
-	VectorItem *previousItem = vector->lastItem->previousItem;
-	void *data = vector->lastItem->data;
+	VectorItem *previousItem;
+	void *data;
+	if(vector->lastItem == NULL) return NULL;
+	previousItem = vector->lastItem->previousItem;
+	data = vector->lastItem->data;
 	free(vector->lastItem);
 	if(previousItem == NULL) {
 		vector->firstItem = NULL;
@@ -234,4 +237,29 @@ void clearVector(Vector *vector) {
 
 void freeVector(Vector *vector) {
 	while(vector->length > 0) free(pop(vector));
+}
+
+VectorIter initVectorIter(Vector *vector) {
+	VectorIter iter;
+	iter.vector = vector;
+	iter.currentItem = NULL;
+	return iter;
+}
+
+void* nextDataIter(VectorIter *iter) {
+	if(iter->currentItem == NULL) {
+		iter->currentItem = iter->vector->firstItem;
+	} else {
+		iter->currentItem = iter->currentItem->nextItem;
+	}
+	return (iter->currentItem == NULL) ? NULL : iter->currentItem->data;
+}
+
+void* previousDataIter(VectorIter *iter) {
+	if(iter->currentItem == NULL) {
+		iter->currentItem = iter->vector->lastItem;
+	} else {
+		iter->currentItem = iter->currentItem->previousItem;
+	}
+	return (iter->currentItem == NULL) ? NULL : iter->currentItem->data;
 }

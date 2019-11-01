@@ -46,6 +46,36 @@ Node initNodeText(const char *id, float px, float py, unsigned int sx, unsigned 
   return node;
 }
 
+NodeIter initNodeIter(Vector *layer) {
+  NodeIter iter;
+  iter.iterStack = initVector();
+  iter.currentIter = initVectorIter(layer);
+  iter.currentNode = NULL;
+  return iter;
+}
+
+Node* nextNode(NodeIter *iter) {
+  if(iter->currentNode == NULL) {
+    iter->currentNode = nextDataIter(&iter->currentIter);
+  } else {
+    if(iter->currentNode->children.length != 0) {
+      pushAlloc(&iter->iterStack, sizeof(VectorIter), &iter->currentIter);
+      iter->currentIter = initVectorIter(&iter->currentNode->children);
+      iter->currentNode = nextDataIter(&iter->currentIter);
+    } else {
+      iter->currentNode = nextDataIter(&iter->currentIter);
+      if(iter->currentNode == NULL) {
+        VectorIter *iterTemp = pop(&iter->iterStack);
+        if(iterTemp == NULL) return NULL;
+        iter->currentIter = *iterTemp;
+        free(iterTemp);
+        iter->currentNode = nextDataIter(&iter->currentIter);
+      }
+    }
+  }
+  return iter->currentNode;
+}
+
 void discardNode(Node node) {
   clearVector(&node.children);
 }
@@ -429,7 +459,7 @@ Shape initShape(float mass) {
   return shape;
 }
 
-Shape initShapePlane(float width, float height, unsigned char color) {
+Shape initShapePlane(float width, float height, unsigned char color, float mass) {
   int i;
   float halfWidth = width / 2.0F;
   float halfHeight = height / 2.0F;
@@ -445,10 +475,11 @@ Shape initShapePlane(float width, float height, unsigned char color) {
   static float generated_uv[][2] = {
     { 1.0F, 1.0F }, { 0.0F, 1.0F }, { 1.0F, 0.0F }, { 0.0F, 0.0F },
   };
-  generated_vertices[0] = initVertex(-halfWidth, -halfHeight, 0.0F, color);
-  generated_vertices[1] = initVertex(halfWidth, -halfHeight, 0.0F, color);
-  generated_vertices[2] = initVertex(-halfWidth, halfHeight, 0.0F, color);
-  generated_vertices[3] = initVertex(halfWidth, halfHeight, 0.0F, color);
+  shape.mass = mass;
+  generated_vertices[0] = initVertex(-halfWidth, 0.0F, -halfHeight, color);
+  generated_vertices[1] = initVertex(halfWidth, 0.0F, -halfHeight, color);
+  generated_vertices[2] = initVertex(-halfWidth, 0.0F, halfHeight, color);
+  generated_vertices[3] = initVertex(halfWidth, 0.0F, halfHeight, color);
   for(i = 0;i < 6;i++) {
     unsigned long *index = malloc(sizeof(unsigned long));
     unsigned long *uvIndex = malloc(sizeof(unsigned long));

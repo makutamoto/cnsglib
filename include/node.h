@@ -54,6 +54,12 @@ typedef struct _Node {
 }	Node;
 
 typedef struct {
+	Vector iterStack;
+	VectorIter currentIter;
+	Node *currentNode;
+} NodeIter;
+
+typedef struct {
 	clock_t begin;
 	unsigned int interval;
 	void (*callback)(Node*);
@@ -62,6 +68,8 @@ typedef struct {
 Node initNode(const char *id, Image image);
 Node initNodeUI(const char *id, Image image, unsigned char color);
 Node initNodeText(const char *id, float px, float py, unsigned int sx, unsigned int sy);
+NodeIter initNodeIter(Vector *layer);
+Node* nextNode(NodeIter *iter);
 void discardNode(Node node);
 
 void drawNode(Node *node);
@@ -73,7 +81,7 @@ int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points)
 void addIntervalEventNode(Node *node, unsigned int milliseconds, void (*callback)(Node*));
 
 Shape initShape(float mass);
-Shape initShapePlane(float width, float height, unsigned char color);
+Shape initShapePlane(float width, float height, unsigned char color, float mass);
 Shape initShapePlaneInv(float width, float height, unsigned char color);
 Shape initShapeBox(float width, float height, float depth, unsigned char color, float mass);
 int initShapeFromObj(Shape *shape, char *filename, float mass);
