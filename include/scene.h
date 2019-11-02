@@ -17,6 +17,7 @@ typedef struct {
   float farLimit;
   float aspect;
   Node *parent;
+  int isRotationDisabled;
 } Camera;
 
 typedef struct {
@@ -26,6 +27,12 @@ typedef struct {
   Camera camera;
   Vector intervalEvents;
 } Scene;
+
+typedef struct {
+  Node *target;
+  Vector points;
+  Vector normals;
+} CollisionInfo;
 
 typedef struct {
 	clock_t begin;

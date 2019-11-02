@@ -50,10 +50,18 @@ void drawScene(Scene *scene) {
   clearTransformation();
   if(scene->camera.parent) {
     float temp[4];
+    float tempMat4[1][4][4];
     float cameraParent[4][4];
     float cameraPosition[4];
     float cameraTarget[4];
     getWorldTransfomration(*scene->camera.parent, cameraParent);
+    if(scene->camera.isRotationDisabled) {
+      genIdentityMat4(tempMat4[0]);
+      tempMat4[0][0][3] = cameraParent[0][3];
+      tempMat4[0][1][3] = cameraParent[1][3];
+      tempMat4[0][2][3] = cameraParent[2][3];
+      memcpy_s(cameraParent, SIZE_MAT4, tempMat4[0], SIZE_MAT4);
+    }
     mulMat4Vec4(cameraParent, convVec3toVec4(scene->camera.position, temp), cameraPosition);
     if(scene->camera.positionMask[0]) cameraPosition[0] = scene->camera.parent->position[0] + scene->camera.position[0];
     if(scene->camera.positionMask[1]) cameraPosition[1] = scene->camera.parent->position[1] + scene->camera.position[1];
@@ -155,6 +163,7 @@ void updateScene(Scene *scene, float elapsed) {
             Vector points = initVector();
             Vector normals = initVector();
             if(testCollisionPolygonPolygon(*node, *collisionTarget, &normals, &points)) {
+              CollisionInfo info;
               if(!node->isThrough) {
                 float tempVec3[1][3];
                 float *point, (*normal)[3];
@@ -198,8 +207,12 @@ void updateScene(Scene *scene, float elapsed) {
                   normal = nextData(&normals);
                 }
               }
-              push(&node->collisionTargets, collisionTarget);
-              push(&collisionTarget->collisionTargets, node);
+              info.points = points;
+              info.normals = normals;
+              info.target = collisionTarget;
+              pushAlloc(&node->collisionTargets, sizeof(CollisionInfo), &info);
+              info.target = node;
+              pushAlloc(&collisionTarget->collisionTargets, sizeof(CollisionInfo), &info);
               node->collisionFlags |= flags;
               collisionTarget->collisionFlags |= flags;
             }

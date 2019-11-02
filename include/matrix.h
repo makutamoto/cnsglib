@@ -7,6 +7,7 @@
 #define COPY_ARY(dest, src) memcpy_s(dest, sizeof(dest), src, sizeof(src))
 
 #define SIZE_VEC3 (3 * sizeof(float))
+#define SIZE_MAT4 (16 * sizeof(float))
 
 #define X_MASK 1
 #define Y_MASK 2
