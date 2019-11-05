@@ -34,7 +34,7 @@ Node initNodeUI(const char *id, Image image, unsigned char color) {
   return node;
 }
 
-Node initNodeText(const char *id, float px, float py, unsigned int sx, unsigned int sy) {
+Node initNodeText(const char *id, float px, float py, unsigned int sx, unsigned int sy, int (*behaviour)(Node*)) {
   Node node;
   unsigned int size[2];
   getScreenSize(size);
@@ -43,6 +43,7 @@ Node initNodeText(const char *id, float px, float py, unsigned int sx, unsigned 
   node.position[1] = py * 100.0F / size[1] + (sign(py) == -1 ? 100.0F : 0.0F);
 	node.scale[0] = sx * 100.0F / size[0];
 	node.scale[1] = sy * 100.0F / size[1];
+  node.behaviour = behaviour;
   return node;
 }
 
@@ -202,51 +203,8 @@ static void calcLineParameters(const float triangle[3][3], const float d[3], con
   ratio[1] = dv[indexC] / (dv[indexC] - dv[indexB]);
   t[0] = pv[indexA] + (pv[indexB] - pv[indexA]) * ratio[0];
   t[1] = pv[indexC] + (pv[indexB] - pv[indexC]) * ratio[1];
-  addVec3(triangle[indexB], mulVec3ByScalar(subVec3(triangle[indexA], triangle[indexB], tempVec3[0]), ratio[0], tempVec3[1]), vertices[0]);
-  addVec3(triangle[indexB], mulVec3ByScalar(subVec3(triangle[indexC], triangle[indexB], tempVec3[0]), ratio[1], tempVec3[1]), vertices[1]);
-}
-
-void projectTriangleOnAxes(const float triangle[3][3], int indexA, int indexB, float out[3][3]) {
-  out[0][0] = triangle[0][indexA];
-  out[0][1] = triangle[0][indexB];
-  out[0][2] = 0.0F;
-  out[1][0] = triangle[1][indexA];
-  out[1][1] = triangle[1][indexB];
-  out[1][2] = 0.0F;
-  out[2][0] = triangle[2][indexA];
-  out[2][1] = triangle[2][indexB];
-  out[2][2] = 0.0F;
-}
-
-int testLine2dIntersection(const float lineA[2][3], const float lineB[2][3]) {
-  float denominator;
-  float uA, uB;
-  denominator = (lineB[1][1] - lineB[0][1]) * (lineA[1][0] - lineA[0][0]) - (lineB[1][0] - lineB[0][0]) * (lineA[1][1] - lineA[0][1]);
-  if(denominator == 0.0F) return FALSE;
-  uA = ((lineB[1][0] - lineB[0][0]) * (lineA[0][1] - lineB[0][1]) - (lineB[1][1] - lineB[0][1]) * (lineA[0][0] - lineB[0][0])) / denominator;
-  uB = ((lineA[1][0] - lineA[0][0]) * (lineA[0][1] - lineB[0][1]) - (lineA[1][1] - lineA[0][1]) * (lineA[0][0] - lineB[0][0])) / denominator;
-  if((0.0F <= uA && uA <= 1.0F) && (0.0F <= uB && uB <= 1.0F)) return TRUE;
-  return FALSE;
-}
-
-void edgesOfTriangle(const float triangle[3][3], float out[3][2][3]) {
-  COPY_ARY(out[0][0], triangle[0]);
-  COPY_ARY(out[0][1], triangle[1]);
-  COPY_ARY(out[1][0], triangle[1]);
-  COPY_ARY(out[1][1], triangle[2]);
-  COPY_ARY(out[2][0], triangle[2]);
-  COPY_ARY(out[2][1], triangle[0]);
-}
-
-int pointInTriangle(const float triangle[3][3], const float point[3]) {
-  float temp[3][3];
-  float zA, zB, zC;
-  float signB;
-  zA = cross(subVec3(triangle[1], triangle[0], temp[0]), subVec3(point, triangle[0], temp[1]), temp[2])[2];
-  zB = cross(subVec3(triangle[2], triangle[1], temp[0]), subVec3(point, triangle[1], temp[1]), temp[2])[2];
-  zC = cross(subVec3(triangle[0], triangle[2], temp[0]), subVec3(point, triangle[2], temp[1]), temp[2])[2];
-  signB = sign(zB);
-  return sign(zA) == signB && signB == sign(zC);
+  addVec3(triangle[indexA], mulVec3ByScalar(subVec3(triangle[indexB], triangle[indexA], tempVec3[0]), ratio[0], tempVec3[1]), vertices[0]);
+  addVec3(triangle[indexC], mulVec3ByScalar(subVec3(triangle[indexB], triangle[indexC], tempVec3[0]), ratio[1], tempVec3[1]), vertices[1]);
 }
 
 static int testCollisionTriangleTriangle(const float a[3][3], const float b[3][3], Vector *points) {
@@ -255,99 +213,44 @@ static int testCollisionTriangleTriangle(const float a[3][3], const float b[3][3
   float n1[3], n2[3];
   float d1, d2;
   float dv1[3], dv2[3];
+  float d[3];
+  float t1[2], t2[2];
+  float v1[2][3], v2[2][3];
+  float *v1MinMax[2], *v2MinMax[2];
+  float t1MinMax[2], t2MinMax[2];
   if(calcPlaneEquation(b, a, n2, &d2, dv2) || calcPlaneEquation(a, b, n1, &d1, dv1)) return FALSE;
-  if((dv1[0] == 0.0F && dv1[1] == 0.0F && dv1[2] == 0.0F) || (dv2[0] == 0.0F && dv2[1] == 0.0F && dv2[2] == 0.0F)) {
-    // int i;
-    float triangleAOnAxes[3][3][3], triangleBOnAxes[3][3][3];
-    float areas[3];
-    // float triangleAEdges[3][2][3], triangleBEdges[3][2][3];
-    int triangleIndex;
-    projectTriangleOnAxes(a, 0, 1, triangleAOnAxes[0]);
-    projectTriangleOnAxes(a, 1, 2, triangleAOnAxes[1]);
-    projectTriangleOnAxes(a, 2, 0, triangleAOnAxes[2]);
-    projectTriangleOnAxes(a, 0, 1, triangleBOnAxes[0]);
-    projectTriangleOnAxes(a, 1, 2, triangleBOnAxes[1]);
-    projectTriangleOnAxes(a, 2, 0, triangleBOnAxes[2]);
-    areas[0] = areaOfTriangle(triangleAOnAxes[0]);
-    areas[1] = areaOfTriangle(triangleAOnAxes[1]);
-    areas[2] = areaOfTriangle(triangleAOnAxes[2]);
-    if(areas[0] > areas[1]) {
-      if(areas[0] > areas[2]) {
-        triangleIndex = 0;
-      } else {
-        if(areas[2] > areas[1]) {
-          triangleIndex = 2;
-        } else {
-          triangleIndex = 1;
-        }
-      }
-    } else {
-      if(areas[1] > areas[2]) {
-        triangleIndex = 1;
-      } else {
-        triangleIndex = 2;
-      }
-    }
-    // edgesOfTriangle(triangleAOnAxes[triangleIndex], triangleAEdges);
-    // edgesOfTriangle(triangleBOnAxes[triangleIndex], triangleBEdges);
-    // for(i = 0;i < 3;i++) {
-    //   if(testLine2dIntersection(triangleAEdges[i], triangleBEdges[0]) ||
-    //     testLine2dIntersection(triangleAEdges[i], triangleBEdges[1]) ||
-    //     testLine2dIntersection(triangleAEdges[i], triangleBEdges[2])) {
-    //       // puts("A");
-    //       // pushAllocUntilNull(points, SIZE_VEC3, a[0], a[1], a[2], NULL);
-    //       getTriangleCM3(a, tempVec3[0]);
-    //       pushAlloc(points, SIZE_VEC3, tempVec3[0]);
-    //       return 1;
-    //   }
-    // }
-    if(pointInTriangle(triangleAOnAxes[triangleIndex], triangleBOnAxes[triangleIndex][0])) {
-      pushAllocUntilNull(points, SIZE_VEC3, b[0], b[1], b[2], NULL);
-      return 3;
-    }
-    if(pointInTriangle(triangleBOnAxes[triangleIndex], triangleAOnAxes[triangleIndex][0])) {
-      pushAllocUntilNull(points, SIZE_VEC3, a[0], a[1], a[2], NULL);
-      return 3;
-    }
+  cross(n1, n2, tempVec3[0]);
+  normalize3(tempVec3[0], d);
+  calcLineParameters(a, d, dv2, t1, v1);
+  calcLineParameters(b, d, dv1, t2, v2);
+  if(t1[0] > t1[1]) {
+    t1MinMax[0] = t1[1];
+    t1MinMax[1] = t1[0];
+    v1MinMax[0] = v1[1];
+    v1MinMax[1] = v1[0];
   } else {
-    float d[3];
-    float t1[2], t2[2];
-    float v1[2][3], v2[2][3];
-    float *v1MinMax[2], *v2MinMax[2];
-    float t1MinMax[2], t2MinMax[2];
-    cross(n1, n2, tempVec3[0]);
-    normalize3(tempVec3[0], d);
-    calcLineParameters(a, d, dv1, t1, v1);
-    calcLineParameters(b, d, dv2, t2, v2);
-    if(t1[0] > t1[1]) {
-      t1MinMax[0] = t1[1];
-      t1MinMax[1] = t1[0];
-      v1MinMax[0] = v1[1];
-      v1MinMax[1] = v1[0];
-    } else {
-      t1MinMax[0] = t1[0];
-      t1MinMax[1] = t1[1];
-      v1MinMax[0] = v1[0];
-      v1MinMax[1] = v1[1];
-    }
-    if(t2[0] > t2[1]) {
-      t2MinMax[0] = t2[1];
-      t2MinMax[1] = t2[0];
-      v2MinMax[0] = v2[1];
-      v2MinMax[1] = v2[0];
-    } else {
-      t2MinMax[0] = t2[0];
-      t2MinMax[1] = t2[1];
-      v2MinMax[0] = v2[0];
-      v2MinMax[1] = v2[1];
-    }
-    if(!(t1MinMax[1] < t2MinMax[0] || t2MinMax[1] < t1MinMax[0])) {
-      float *contacts[2];
-      contacts[0] = (t1MinMax[0] > t2MinMax[0]) ? v1MinMax[0] : v2MinMax[0];
-      contacts[1] = (t1MinMax[1] < t2MinMax[1]) ? v1MinMax[1] : v2MinMax[1];
-      pushAllocUntilNull(points, SIZE_VEC3, contacts[0], contacts[1], NULL);
-      return 2;
-    }
+    t1MinMax[0] = t1[0];
+    t1MinMax[1] = t1[1];
+    v1MinMax[0] = v1[0];
+    v1MinMax[1] = v1[1];
+  }
+  if(t2[0] > t2[1]) {
+    t2MinMax[0] = t2[1];
+    t2MinMax[1] = t2[0];
+    v2MinMax[0] = v2[1];
+    v2MinMax[1] = v2[0];
+  } else {
+    t2MinMax[0] = t2[0];
+    t2MinMax[1] = t2[1];
+    v2MinMax[0] = v2[0];
+    v2MinMax[1] = v2[1];
+  }
+  if(!(t1MinMax[1] < t2MinMax[0] || t2MinMax[1] < t1MinMax[0])) {
+    float *contacts[2];
+    contacts[0] = (t1MinMax[0] > t2MinMax[0]) ? v1MinMax[0] : v2MinMax[0];
+    contacts[1] = (t1MinMax[1] < t2MinMax[1]) ? v1MinMax[1] : v2MinMax[1];
+    pushAllocUntilNull(points, SIZE_VEC3, contacts[0], contacts[1], NULL);
+    return 2;
   }
   return 0;
 }
@@ -470,7 +373,7 @@ Shape initShapePlane(float width, float height, unsigned char color, float mass)
     0, 1,
   };
   static float generated_normals[][3] = {
-    { 0.0F, 0.0F, -1.0F }, { 0.0F, 0.0F, -1.0F },
+    { 0.0F, 1.0F, 0.0F }, { 0.0F, 1.0F, 0.0F },
   };
   static float generated_uv[][2] = {
     { 1.0F, 1.0F }, { 0.0F, 1.0F }, { 1.0F, 0.0F }, { 0.0F, 0.0F },

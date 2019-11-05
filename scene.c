@@ -42,7 +42,7 @@ void addIntervalEventScene(Scene *scene, unsigned int milliseconds, void (*callb
   push(&scene->intervalEvents, interval);
 }
 
-void drawScene(Scene *scene) {
+Image drawScene(Scene *scene) {
   Node *node;
   float lookAt[4][4];
   float projection[4][4];
@@ -80,7 +80,7 @@ void drawScene(Scene *scene) {
     setCameraMat4(camera);
     drawNode(node);
   }
-  flushBuffer();
+  return getBufferImage();
 }
 
 static void impulseNodes(Node *nodeA, Node *nodeB, float normal[3], float point[3]) {

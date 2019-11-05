@@ -9,11 +9,13 @@
 #include "./node.h"
 #include "./scene.h"
 #include "./vector.h"
+#include "./transition.h"
 
 #ifndef __BORLANDC__
 #pragma comment(lib, "Winmm.lib")
 #endif
 
 void initCNSG(unsigned int width, unsigned int height);
+void gameLoop(unsigned int fps, int (*loop)(float, Image*));
 
 #endif

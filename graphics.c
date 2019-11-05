@@ -71,7 +71,7 @@ static void initScreen(short width, short height) {
 
 void initGraphics(unsigned int width, unsigned int height) {
 	initScreen(width, height);
-	bufferSize[0] = 2 * width;
+	bufferSize[0] = width;
 	bufferSize[1] = height;
 	bufferLength = bufferSize[0] * bufferSize[1];
 	zBufferLength = sizeof(float) * bufferLength;
@@ -96,6 +96,20 @@ void deinitGraphics(void) {
 	if(buffer) free(buffer);
 }
 
+Image getBufferImage(void) {
+	Image image;
+	image.width = bufferSize[0];
+	image.height = bufferSize[1];
+	image.transparent = NULL_COLOR;
+	image.data = malloc(bufferLength);
+	memcpy_s(image.data, bufferLength, buffer, bufferLength);
+	return image;
+}
+
+void setBufferImage(Image image) {
+	memcpy_s(buffer, bufferLength, image.data, bufferLength);
+}
+
 void setZNear(float value) {
 	zNearOver = 1.0F / value;
 }
@@ -112,14 +126,14 @@ void clearZBuffer(void) {
 void flushBuffer(void) {
 	DWORD nofWritten;
 	static COORD cursor = { 0, 0 };
-	WORD *data = (WORD*)malloc(bufferLength * sizeof(WORD));
+	WORD *data = (WORD*)malloc(2 * bufferLength * sizeof(WORD));
 	size_t index;
 	for(index = 0;index < screenLength;index++) {
 		WORD attribute = (WORD)(BACKGROUND_BLUE - 1 + (((buffer[index] & 8) | ((buffer[index] & 1) << 2) | (buffer[index] & 2) | ((buffer[index] & 4) >> 2)) << 4));
 		data[2 * index] = attribute;
 		data[2 * index + 1] = attribute;
 	}
-	WriteConsoleOutputAttribute(screen, data, bufferLength, cursor, &nofWritten);
+	WriteConsoleOutputAttribute(screen, data, 2 * bufferLength, cursor, &nofWritten);
 	free(data);
 }
 
@@ -413,7 +427,16 @@ Image initImage(unsigned int width, unsigned int height, unsigned char color, un
 	image.transparent = transparent;
 	image.data = malloc(imageSize);
 	memset(image.data, color, imageSize);
+	return image;
+}
 
+Image initImageBulk(unsigned int width, unsigned int height, unsigned char transparent) {
+	Image image;
+	size_t imageSize = width * height;
+	image.width = width;
+	image.height = height;
+	image.transparent = transparent;
+	image.data = malloc(imageSize);
 	return image;
 }
 

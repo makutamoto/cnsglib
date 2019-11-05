@@ -38,6 +38,9 @@ void clearBuffer(unsigned char color);
 void clearZBuffer(void);
 void flushBuffer(void);
 
+Image getBufferImage(void);
+void setBufferImage(Image image);
+
 Vertex initVertex(float x, float y, float z, unsigned char color);
 
 void pushTransformation(void);
@@ -57,6 +60,7 @@ void fillTriangle(Vertex vertices[3], Image image, const float uv[3][2]);
 void fillPolygons(Vector vertices, Vector indices, Image image, Vector uv, Vector uvIndices);
 
 Image initImage(unsigned int width, unsigned int height, unsigned char color, unsigned char transparent);
+Image initImageBulk(unsigned int width, unsigned int height, unsigned char transparent);
 void clearImage(Image image);
 void cropImage(Image dest, Image src, unsigned int xth, unsigned int yth);
 void pasteImage(Image dest, Image src, unsigned int x, unsigned int y);

@@ -67,7 +67,7 @@ typedef struct {
 
 Node initNode(const char *id, Image image);
 Node initNodeUI(const char *id, Image image, unsigned char color);
-Node initNodeText(const char *id, float px, float py, unsigned int sx, unsigned int sy);
+Node initNodeText(const char *id, float px, float py, unsigned int sx, unsigned int sy, int (*behaviour)(Node*));
 NodeIter initNodeIter(Vector *layer);
 Node* nextNode(NodeIter *iter);
 void discardNode(Node node);
