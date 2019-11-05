@@ -174,7 +174,7 @@ int calcPlaneEquation(const float triangle[3][3], const float target[3][3], floa
   return 0;
 }
 
-static void calcLineParameters(const float triangle[3][3], const float d[3], const float dv[3], float t[2], float vertices[2][3]) {
+static float calcLineParameters(const float triangle[3][3], const float d[3], const float dv[3], float t[2], float vertices[2][3]) {
   float tempVec3[2][3];
   float pv[3];
   int signA, signB, signC;
@@ -205,9 +205,10 @@ static void calcLineParameters(const float triangle[3][3], const float d[3], con
   t[1] = pv[indexC] + (pv[indexB] - pv[indexC]) * ratio[1];
   addVec3(triangle[indexA], mulVec3ByScalar(subVec3(triangle[indexB], triangle[indexA], tempVec3[0]), ratio[0], tempVec3[1]), vertices[0]);
   addVec3(triangle[indexC], mulVec3ByScalar(subVec3(triangle[indexB], triangle[indexC], tempVec3[0]), ratio[1], tempVec3[1]), vertices[1]);
+  return (dv[indexB] < 0) ? dv[indexB] : min(dv[indexA], dv[indexC]);
 }
 
-static int testCollisionTriangleTriangle(const float a[3][3], const float b[3][3], Vector *points) {
+static int testCollisionTriangleTriangle(const float a[3][3], const float b[3][3], Vector *points, Vector *depths) {
   // using Moller's algorithm: A Fast Triangle-Triangle Intersection Test
   float tempVec3[2][3];
   float n1[3], n2[3];
@@ -218,11 +219,12 @@ static int testCollisionTriangleTriangle(const float a[3][3], const float b[3][3
   float v1[2][3], v2[2][3];
   float *v1MinMax[2], *v2MinMax[2];
   float t1MinMax[2], t2MinMax[2];
+  float depth[2];
   if(calcPlaneEquation(b, a, n2, &d2, dv2) || calcPlaneEquation(a, b, n1, &d1, dv1)) return FALSE;
   cross(n1, n2, tempVec3[0]);
   normalize3(tempVec3[0], d);
-  calcLineParameters(a, d, dv2, t1, v1);
-  calcLineParameters(b, d, dv1, t2, v2);
+  depth[0] = calcLineParameters(a, d, dv2, t1, v1);
+  depth[1] = calcLineParameters(b, d, dv1, t2, v2);
   if(t1[0] > t1[1]) {
     t1MinMax[0] = t1[1];
     t1MinMax[1] = t1[0];
@@ -250,6 +252,7 @@ static int testCollisionTriangleTriangle(const float a[3][3], const float b[3][3
     contacts[0] = (t1MinMax[0] > t2MinMax[0]) ? v1MinMax[0] : v2MinMax[0];
     contacts[1] = (t1MinMax[1] < t2MinMax[1]) ? v1MinMax[1] : v2MinMax[1];
     pushAllocUntilNull(points, SIZE_VEC3, contacts[0], contacts[1], NULL);
+    pushAllocUntilNull(depths, SIZE_VEC2, depth, depth, NULL);
     return 2;
   }
   return 0;
@@ -287,7 +290,7 @@ Vector* getPolygons(Node node, Vector *polygons) {
   return polygons;
 }
 
-int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points) {
+int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points, Vector *depths) {
   int i;
   unsigned long indexA = 0;
   Vector polygonsA = initVector();
@@ -307,7 +310,7 @@ int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points)
       float polygonBWorld[3][3];
       int nofNormals;
       mulMat4ByTriangle(b.lastTransformation, polygonB, polygonBWorld);
-      nofNormals = testCollisionTriangleTriangle(polygonAWorld, polygonBWorld, points);
+      nofNormals = testCollisionTriangleTriangle(polygonAWorld, polygonBWorld, points, depths);
       if(nofNormals) {
         float temp[2][3];
         float tempMat3[2][3][3];

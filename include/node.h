@@ -77,7 +77,7 @@ void applyForce(Node *node, float force[3], int mask, int rotation);
 float (*getNodeTransformation(Node node, float out[4][4]))[4];
 float (*getWorldTransfomration(Node node, float out[4][4]))[4];
 int testCollision(Node a, Node b);
-int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points);
+int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points, Vector *depths);
 void addIntervalEventNode(Node *node, unsigned int milliseconds, void (*callback)(Node*));
 
 Shape initShape(float mass);

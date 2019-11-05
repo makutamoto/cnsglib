@@ -6,6 +6,7 @@
 #define sign(x) ((x) < 0 ? -1 : ((x) > 0 ? 1 : 0))
 #define COPY_ARY(dest, src) memcpy_s(dest, sizeof(dest), src, sizeof(src))
 
+#define SIZE_VEC2 (2 * sizeof(float))
 #define SIZE_VEC3 (3 * sizeof(float))
 #define SIZE_MAT4 (16 * sizeof(float))
 

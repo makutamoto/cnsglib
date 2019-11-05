@@ -20,7 +20,7 @@ Camera initCamera(float x, float y, float z, float aspect) {
   camera.worldUp[2] = 0.0F;
   camera.fov = PI / 3.0F * 2.0F;
   camera.nearLimit = 10.0F;
-  camera.farLimit = 500.0F;
+  camera.farLimit = 1000.0F;
   camera.aspect = aspect;
   return camera;
 }
@@ -83,14 +83,14 @@ Image drawScene(Scene *scene) {
   return getBufferImage();
 }
 
-static void impulseNodes(Node *nodeA, Node *nodeB, float normal[3], float point[3]) {
+static void impulseNodes(Node *nodeA, Node *nodeB, float normal[3], float point[3], float depth) {
   float temp[2][3];
   float velocity[3];
   float impulse[3];
   float impulseCoefficient;
   float impulseNumerator, impulseDenominator;
   addVec3(nodeA->velocity, cross(nodeA->angVelocity, point, temp[0]), velocity);
-  impulseNumerator = - (1.0F + nodeA->shape.restitution) * dot3(velocity, normal);
+  impulseNumerator = - (1.0F + nodeA->shape.restitution) * dot3(velocity, normal) - depth / 50.0F;
   if(impulseNumerator <= 0) return;
   impulseDenominator = 1.0F / nodeA->shape.mass + dot3(cross(mulMat3Vec3(nodeA->shape.worldInverseInertia, cross(point, normal, temp[0]), temp[1]), point, temp[0]), normal);
   impulseCoefficient = impulseNumerator / impulseDenominator;
@@ -162,11 +162,12 @@ void updateScene(Scene *scene, float elapsed) {
           if(testCollision(*node, *collisionTarget)) {
             Vector points = initVector();
             Vector normals = initVector();
-            if(testCollisionPolygonPolygon(*node, *collisionTarget, &normals, &points)) {
+            Vector depths = initVector();
+            if(testCollisionPolygonPolygon(*node, *collisionTarget, &normals, &points, &depths)) {
               CollisionInfo info;
               if(!node->isThrough) {
                 float tempVec3[1][3];
-                float *point, (*normal)[3];
+                float *point, (*normal)[3], *depth;
                 float staticFriction, dynamicFriction, rollingFriction;
                 Vector checkedNormalsNode = initVector();
                 Vector checkedNormalsTarget = initVector();
@@ -174,13 +175,15 @@ void updateScene(Scene *scene, float elapsed) {
                 dynamicFriction = sqrtf(node->shape.dynamicFriction * node->shape.dynamicFriction + collisionTarget->shape.dynamicFriction * collisionTarget->shape.dynamicFriction);
                 rollingFriction = sqrtf(node->shape.rollingFriction * node->shape.rollingFriction + collisionTarget->shape.rollingFriction * collisionTarget->shape.rollingFriction);
                 resetIteration(&normals);
+                resetIteration(&depths);
                 normal = nextData(&normals);
+                depth = nextData(&depths);
                 iterf(&points, &point) {
                   int checkedFlag = FALSE;
                   float *checkedNormal = NULL;
                   if(node->isPhysicsEnabled) {
                     subVec3(point, node->position, tempVec3[0]);
-                    impulseNodes(node, collisionTarget, normal[1], tempVec3[0]);
+                    impulseNodes(node, collisionTarget, normal[1], tempVec3[0], depth[0]);
                     iterf(&checkedNormalsTarget, &checkedNormal) {
                       if(cosVec3(normal[1], checkedNormal) >= 0.9F) checkedFlag = TRUE;
                     }
@@ -193,7 +196,7 @@ void updateScene(Scene *scene, float elapsed) {
                   }
                   if(collisionTarget->isPhysicsEnabled) {
                     subVec3(point, collisionTarget->position, tempVec3[0]);
-                    impulseNodes(collisionTarget, &nodeTemp, normal[0], tempVec3[0]);
+                    impulseNodes(collisionTarget, &nodeTemp, normal[0], tempVec3[0], depth[1]);
                     iterf(&checkedNormalsNode, &checkedNormal) {
                       if(cosVec3(normal[0], checkedNormal) >= 0.9F) checkedFlag = TRUE;
                     }
@@ -205,6 +208,7 @@ void updateScene(Scene *scene, float elapsed) {
                     }
                   }
                   normal = nextData(&normals);
+                  depth = nextData(&depths);
                 }
               }
               info.points = points;
