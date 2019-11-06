@@ -9,6 +9,8 @@
 #include "./include/matrix.h"
 #include "./include/graphics.h"
 
+#define VELOCITY_LIMIT 130.0F * 10000.0F / 3600.0F
+
 Camera initCamera(float x, float y, float z, float aspect) {
   Camera camera;
   memset(&camera, 0, sizeof(Camera));
@@ -89,15 +91,26 @@ static void impulseNodes(Node *nodeA, Node *nodeB, float normal[3], float point[
   float impulse[3];
   float impulseCoefficient;
   float impulseNumerator, impulseDenominator;
+  float nodeVelocityNormal;
   addVec3(nodeA->velocity, cross(nodeA->angVelocity, point, temp[0]), velocity);
-  impulseNumerator = - (1.0F + nodeA->shape.restitution) * dot3(velocity, normal) - depth / 50.0F;
+  impulseNumerator = - (1.0F + nodeA->shape.restitution) * dot3(velocity, normal);
   if(impulseNumerator <= 0) return;
   impulseDenominator = 1.0F / nodeA->shape.mass + dot3(cross(mulMat3Vec3(nodeA->shape.worldInverseInertia, cross(point, normal, temp[0]), temp[1]), point, temp[0]), normal);
-  impulseCoefficient = impulseNumerator / impulseDenominator;
+  impulseCoefficient = impulseNumerator / impulseDenominator - 2.0F * depth;
   mulVec3ByScalar(normal, impulseCoefficient, impulse);
-  addVec3(nodeA->velocity, divVec3ByScalar(impulse, nodeA->shape.mass, temp[0]), nodeA->velocity);
+  divVec3ByScalar(impulse, nodeA->shape.mass, temp[0]);
+  nodeVelocityNormal = -dot3(nodeA->velocity, normal);
+  if(length3(temp[0]) < nodeVelocityNormal) {
+    normalize3(temp[0], temp[1]);
+    mulVec3ByScalar(temp[1], nodeVelocityNormal, temp[0]);
+  }
+  addVec3(nodeA->velocity, temp[0], nodeA->velocity);
   addVec3(nodeA->angMomentum, cross(point, impulse, temp[0]), nodeA->angMomentum);
   mulMat3Vec3(nodeA->shape.worldInverseInertia, nodeA->angMomentum, nodeA->angVelocity);
+  if(length3(nodeA->velocity) > VELOCITY_LIMIT) {
+		normalize3(nodeA->velocity, temp[0]);
+		mulVec3ByScalar(temp[0], VELOCITY_LIMIT, nodeA->velocity);
+	}
   // subVec3(relativeVelocity, mulVec3ByScalar(normal, dot3(relativeVelocity, normal), temp[0]), temp[1]);
   // normalize3(temp[1], tangent);
   // staticImpulse = - dot3(relativeVelocity, tangent) / (1.0F / nodeA->shape.mass + 1.0F / nodeB->shape.mass);
