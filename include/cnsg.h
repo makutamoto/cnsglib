@@ -10,6 +10,7 @@
 #include "./scene.h"
 #include "./vector.h"
 #include "./transition.h"
+#include "./triangle.h"
 
 #ifndef __BORLANDC__
 #pragma comment(lib, "Winmm.lib")

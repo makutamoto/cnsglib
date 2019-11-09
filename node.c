@@ -9,6 +9,7 @@
 #include "./include/vector.h"
 #include "./include/matrix.h"
 #include "./include/colors.h"
+#include "./include/triangle.h"
 
 #define OBJ_LINE_BUFFER_SIZE 128
 #define OBJ_WORD_BUFFER_SIZE 32
@@ -23,6 +24,7 @@ Node initNode(const char *id, Image image) {
 	node.texture = image;
   node.children = initVector();
   node.isVisible = TRUE;
+  genIdentityMat4(node.lastTransformation);
   return node;
 }
 
@@ -138,8 +140,8 @@ float (*getNodeTransformation(Node node, float out[4][4]))[4] {
   return out;
 }
 
-float (*getWorldTransfomration(Node node, float out[4][4]))[4] {
-  Node *current = &node;
+float (*getWorldTransfomration(Node *node, float out[4][4]))[4] {
+  Node *current = node;
   genIdentityMat4(out);
   while(current) {
     float temp[2][4][4];
@@ -155,107 +157,6 @@ int testCollision(Node a, Node b) {
   return (a.aabb[0][0] <= b.aabb[0][1] && a.aabb[0][1] >= b.aabb[0][0]) &&
          (a.aabb[1][0] <= b.aabb[1][1] && a.aabb[1][1] >= b.aabb[1][0]) &&
          (a.aabb[2][0] <= b.aabb[2][1] && a.aabb[2][1] >= b.aabb[2][0]);
-}
-
-int calcPlaneEquation(const float triangle[3][3], const float target[3][3], float n[3], float *d, float dv[3]) {
-  float temp[3][3];
-  cross(subVec3(triangle[1], triangle[0], temp[0]), subVec3(triangle[2], triangle[0], temp[1]), temp[2]);
-  normalize3(temp[2], n);
-  *d = - dot3(n, triangle[0]);
-  dv[0] = dot3(n, target[0]) + *d;
-  dv[1] = dot3(n, target[1]) + *d;
-  dv[2] = dot3(n, target[2]) + *d;
-  if(dv[0] != 0.0F && dv[1] != 0.0F && dv[2] != 0.0F) {
-    int signDv1 = sign(dv[1]);
-    if(sign(dv[0]) == signDv1 && signDv1 == sign(dv[2])) {
-      return -1;
-    }
-  }
-  return 0;
-}
-
-static float calcLineParameters(const float triangle[3][3], const float d[3], const float dv[3], float t[2], float vertices[2][3]) {
-  float tempVec3[2][3];
-  float pv[3];
-  int signA, signB, signC;
-  int indexA, indexB, indexC;
-  float ratio[2];
-  signA = sign(dv[0]);
-  signB = sign(dv[1]);
-  signC = sign(dv[2]);
-  if(signA == signB) {
-    indexA = 0;
-    indexB = 2;
-    indexC = 1;
-  } else if(signB == signC) {
-    indexA = 1;
-    indexB = 0;
-    indexC = 2;
-  } else {
-    indexA = 0;
-    indexB = 1;
-    indexC = 2;
-  }
-  pv[0] = dot3(d, triangle[0]);
-  pv[1] = dot3(d, triangle[1]);
-  pv[2] = dot3(d, triangle[2]);
-  ratio[0] = dv[indexA] / (dv[indexA] - dv[indexB]);
-  ratio[1] = dv[indexC] / (dv[indexC] - dv[indexB]);
-  t[0] = pv[indexA] + (pv[indexB] - pv[indexA]) * ratio[0];
-  t[1] = pv[indexC] + (pv[indexB] - pv[indexC]) * ratio[1];
-  addVec3(triangle[indexA], mulVec3ByScalar(subVec3(triangle[indexB], triangle[indexA], tempVec3[0]), ratio[0], tempVec3[1]), vertices[0]);
-  addVec3(triangle[indexC], mulVec3ByScalar(subVec3(triangle[indexB], triangle[indexC], tempVec3[0]), ratio[1], tempVec3[1]), vertices[1]);
-  return (dv[indexB] < 0) ? dv[indexB] : min(dv[indexA], dv[indexC]);
-}
-
-static int testCollisionTriangleTriangle(const float a[3][3], const float b[3][3], Vector *points, Vector *depths) {
-  // using Moller's algorithm: A Fast Triangle-Triangle Intersection Test
-  float tempVec3[2][3];
-  float n1[3], n2[3];
-  float d1, d2;
-  float dv1[3], dv2[3];
-  float d[3];
-  float t1[2], t2[2];
-  float v1[2][3], v2[2][3];
-  float *v1MinMax[2], *v2MinMax[2];
-  float t1MinMax[2], t2MinMax[2];
-  float depth[2];
-  if(calcPlaneEquation(b, a, n2, &d2, dv2) || calcPlaneEquation(a, b, n1, &d1, dv1)) return FALSE;
-  cross(n1, n2, tempVec3[0]);
-  normalize3(tempVec3[0], d);
-  depth[0] = calcLineParameters(a, d, dv2, t1, v1);
-  depth[1] = calcLineParameters(b, d, dv1, t2, v2);
-  if(t1[0] > t1[1]) {
-    t1MinMax[0] = t1[1];
-    t1MinMax[1] = t1[0];
-    v1MinMax[0] = v1[1];
-    v1MinMax[1] = v1[0];
-  } else {
-    t1MinMax[0] = t1[0];
-    t1MinMax[1] = t1[1];
-    v1MinMax[0] = v1[0];
-    v1MinMax[1] = v1[1];
-  }
-  if(t2[0] > t2[1]) {
-    t2MinMax[0] = t2[1];
-    t2MinMax[1] = t2[0];
-    v2MinMax[0] = v2[1];
-    v2MinMax[1] = v2[0];
-  } else {
-    t2MinMax[0] = t2[0];
-    t2MinMax[1] = t2[1];
-    v2MinMax[0] = v2[0];
-    v2MinMax[1] = v2[1];
-  }
-  if(!(t1MinMax[1] < t2MinMax[0] || t2MinMax[1] < t1MinMax[0])) {
-    float *contacts[2];
-    contacts[0] = (t1MinMax[0] > t2MinMax[0]) ? v1MinMax[0] : v2MinMax[0];
-    contacts[1] = (t1MinMax[1] < t2MinMax[1]) ? v1MinMax[1] : v2MinMax[1];
-    pushAllocUntilNull(points, SIZE_VEC3, contacts[0], contacts[1], NULL);
-    pushAllocUntilNull(depths, SIZE_VEC2, depth, depth, NULL);
-    return 2;
-  }
-  return 0;
 }
 
 float (*mulMat4ByTriangle(float mat[4][4], float triangle[3][3], float out[3][3]))[3] {
@@ -290,50 +191,78 @@ Vector* getPolygons(Node node, Vector *polygons) {
   return polygons;
 }
 
-int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points, Vector *depths) {
-  int i;
-  unsigned long indexA = 0;
+CollisionInfoNode2Node initCollisionInfoNode2Node(Node *nodeA, Node *nodeB, float triangle[3][3], unsigned long normalIndex, unsigned long *uvIndex[3], float contacts[2][3], float depth) {
+  float tempVec3[2][3];
+  float tempVec4[2][4];
+  float tempMat3[2][3][3];
+  float tempMat4[1][4][4];
+  CollisionInfoNode2Node info;
+  memcpy_s(info.normal, SIZE_VEC3, dataAt(&nodeB->collisionShape.normals, normalIndex), SIZE_VEC3);
+  transposeMat3(inverse3(convMat4toMat3(nodeB->lastTransformation, tempMat3[0]), tempMat3[1]), tempMat3[0]);
+  mulMat3Vec3(tempMat3[0], info.normal, tempVec3[0]);
+  normalize3(tempVec3[0], info.normal);
+  convVec4toVec3(mulMat4Vec4(getWorldTransfomration(nodeA->parent, tempMat4[0]), convVec3toVec4(nodeA->position, tempVec4[0]), tempVec4[1]), tempVec3[0]);
+  subVec3(contacts[0], tempVec3[0], info.contacts[0]);
+  subVec3(contacts[1], tempVec3[0], info.contacts[1]);
+  cartesian3dToBarycentric(triangle, contacts[0], info.barycentric[0]);
+  cartesian3dToBarycentric(triangle, contacts[1], info.barycentric[1]);
+  info.depth = depth;
+  return info;
+}
+
+int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBOut) {
+  unsigned long *normalIndex[2];
+  unsigned long *uvIndex[2][3];
   Vector polygonsA = initVector();
   Vector polygonsB = initVector();
   float (*polygonA)[3], (*polygonB)[3];
   int collided = FALSE;
+  *infoAOut = initVector();
+  *infoBOut = initVector();
+  resetIteration(&a.collisionShape.normalIndices);
+  normalIndex[0] = nextData(&a.collisionShape.normalIndices);
+  resetIteration(&a.collisionShape.uvIndices);
+  uvIndex[0][0] = nextData(&a.collisionShape.uvIndices);
+  uvIndex[0][1] = nextData(&a.collisionShape.uvIndices);
+  uvIndex[0][2] = nextData(&a.collisionShape.uvIndices);
   getPolygons(a, &polygonsA);
   getPolygons(b, &polygonsB);
   polygonA = nextData(&polygonsA);
   while(polygonA) {
-    unsigned long indexB = 0;
     float polygonAWorld[3][3];
+    resetIteration(&b.collisionShape.normalIndices);
+    normalIndex[1] = nextData(&b.collisionShape.normalIndices);
+    resetIteration(&b.collisionShape.uvIndices);
+    uvIndex[1][0] = nextData(&b.collisionShape.uvIndices);
+    uvIndex[1][1] = nextData(&b.collisionShape.uvIndices);
+    uvIndex[1][2] = nextData(&b.collisionShape.uvIndices);
     mulMat4ByTriangle(a.lastTransformation, polygonA, polygonAWorld);
     resetIteration(&polygonsB);
     polygonB = nextData(&polygonsB);
     while(polygonB) {
       float polygonBWorld[3][3];
-      int nofNormals;
+      float contacts[2][3];
+      float depths[2];
       mulMat4ByTriangle(b.lastTransformation, polygonB, polygonBWorld);
-      nofNormals = testCollisionTriangleTriangle(polygonAWorld, polygonBWorld, points, depths);
-      if(nofNormals) {
-        float temp[2][3];
-        float tempMat3[2][3][3];
-        float (*normal)[3] = malloc(6 * sizeof(float));
-        unsigned long *normalIndex;
-        normalIndex = (unsigned long*)dataAt(&a.collisionShape.normalIndices, indexA);
-        memcpy_s(temp, 3 * sizeof(float), dataAt(&a.collisionShape.normals, *normalIndex), 3 * sizeof(float));
-        transposeMat3(inverse3(convMat4toMat3(a.lastTransformation, tempMat3[0]), tempMat3[1]), tempMat3[0]);
-        mulMat3Vec3(tempMat3[0], temp[0], temp[1]);
-        normalize3(temp[1], normal[0]);
-        normalIndex = (unsigned long*)dataAt(&b.collisionShape.normalIndices, indexB);
-        memcpy_s(temp, 3 * sizeof(float), dataAt(&b.collisionShape.normals, *normalIndex), 3 * sizeof(float));
-        transposeMat3(inverse3(convMat4toMat3(b.lastTransformation, tempMat3[0]), tempMat3[1]), tempMat3[0]);
-        mulMat3Vec3(tempMat3[0], temp[0], temp[1]);
-        normalize3(temp[1], normal[1]);
-        for(i = 0;i < nofNormals;i++) push(normals, normal);
+      if(testCollisionTriangleTriangle(polygonAWorld, polygonBWorld, contacts, depths)) {
+        CollisionInfoNode2Node infoA, infoB;
+        infoA = initCollisionInfoNode2Node(&a, &b, polygonA, *normalIndex[1], uvIndex[1], contacts, depths[0]);
+        infoB = initCollisionInfoNode2Node(&b, &a, polygonB, *normalIndex[0], uvIndex[0], contacts, depths[1]);
+        pushAlloc(infoAOut, sizeof(CollisionInfoNode2Node), &infoA);
+        pushAlloc(infoBOut, sizeof(CollisionInfoNode2Node), &infoB);
         collided = TRUE;
       }
       polygonB = nextData(&polygonsB);
-      indexB += 1;
+      normalIndex[1] = nextData(&b.collisionShape.normalIndices);
+      uvIndex[1][0] = nextData(&b.collisionShape.uvIndices);
+      uvIndex[1][1] = nextData(&b.collisionShape.uvIndices);
+      uvIndex[1][2] = nextData(&b.collisionShape.uvIndices);
     }
     polygonA = nextData(&polygonsA);
-    indexA += 1;
+    normalIndex[0] = nextData(&a.collisionShape.normalIndices);
+    uvIndex[0][0] = nextData(&a.collisionShape.uvIndices);
+    uvIndex[0][1] = nextData(&a.collisionShape.uvIndices);
+    uvIndex[0][2] = nextData(&a.collisionShape.uvIndices);
   }
   freeVector(&polygonsA);
   freeVector(&polygonsB);
@@ -358,10 +287,6 @@ Shape initShape(float mass) {
   shape.uv = initVector();
   shape.uvIndices = initVector();
   shape.mass = mass;
-  shape.restitution = 0.0F;
-  shape.staticFriction = 0.5F;
-  shape.dynamicFriction = 0.3F;
-  shape.rollingFriction = 0.5F;
   return shape;
 }
 

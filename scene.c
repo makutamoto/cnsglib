@@ -56,7 +56,7 @@ Image drawScene(Scene *scene) {
     float cameraParent[4][4];
     float cameraPosition[4];
     float cameraTarget[4];
-    getWorldTransfomration(*scene->camera.parent, cameraParent);
+    getWorldTransfomration(scene->camera.parent, cameraParent);
     if(scene->camera.isRotationDisabled) {
       genIdentityMat4(tempMat4[0]);
       tempMat4[0][0][3] = cameraParent[0][3];
@@ -92,13 +92,18 @@ static void impulseNodes(Node *nodeA, Node *nodeB, float normal[3], float point[
   float impulseCoefficient;
   float impulseNumerator, impulseDenominator;
   float nodeVelocityNormal;
-  addVec3(nodeA->velocity, cross(nodeA->angVelocity, point, temp[0]), velocity);
-  impulseNumerator = - (1.0F + nodeA->shape.restitution) * dot3(velocity, normal);
+  float relativeVelocity[3], relativeAngVelocity[3];
+  float restitution;
+  restitution = sqrt(nodeA->collisionShape.restitution * nodeA->collisionShape.restitution + nodeB->collisionShape.restitution * nodeB->collisionShape.restitution);
+  subVec3(nodeA->velocity, nodeB->velocity, relativeVelocity);
+  subVec3(nodeA->angVelocity, nodeB->angVelocity, relativeAngVelocity);
+  addVec3(relativeVelocity, cross(relativeAngVelocity, point, temp[0]), velocity);
+  impulseNumerator = - (1.0F + restitution) * dot3(velocity, normal);
   if(impulseNumerator <= 0) return;
-  impulseDenominator = 1.0F / nodeA->shape.mass + dot3(cross(mulMat3Vec3(nodeA->shape.worldInverseInertia, cross(point, normal, temp[0]), temp[1]), point, temp[0]), normal);
+  impulseDenominator = 1.0F / nodeA->collisionShape.mass + dot3(cross(mulMat3Vec3(nodeA->collisionShape.worldInverseInertia, cross(point, normal, temp[0]), temp[1]), point, temp[0]), normal);
   impulseCoefficient = impulseNumerator / impulseDenominator - 2.0F * depth;
   mulVec3ByScalar(normal, impulseCoefficient, impulse);
-  divVec3ByScalar(impulse, nodeA->shape.mass, temp[0]);
+  divVec3ByScalar(impulse, nodeA->collisionShape.mass, temp[0]);
   nodeVelocityNormal = -dot3(nodeA->velocity, normal);
   if(length3(temp[0]) < nodeVelocityNormal) {
     normalize3(temp[0], temp[1]);
@@ -106,14 +111,14 @@ static void impulseNodes(Node *nodeA, Node *nodeB, float normal[3], float point[
   }
   addVec3(nodeA->velocity, temp[0], nodeA->velocity);
   addVec3(nodeA->angMomentum, cross(point, impulse, temp[0]), nodeA->angMomentum);
-  mulMat3Vec3(nodeA->shape.worldInverseInertia, nodeA->angMomentum, nodeA->angVelocity);
+  mulMat3Vec3(nodeA->collisionShape.worldInverseInertia, nodeA->angMomentum, nodeA->angVelocity);
   if(length3(nodeA->velocity) > VELOCITY_LIMIT) {
 		normalize3(nodeA->velocity, temp[0]);
 		mulVec3ByScalar(temp[0], VELOCITY_LIMIT, nodeA->velocity);
 	}
   // subVec3(relativeVelocity, mulVec3ByScalar(normal, dot3(relativeVelocity, normal), temp[0]), temp[1]);
   // normalize3(temp[1], tangent);
-  // staticImpulse = - dot3(relativeVelocity, tangent) / (1.0F / nodeA->shape.mass + 1.0F / nodeB->shape.mass);
+  // staticImpulse = - dot3(relativeVelocity, tangent) / (1.0F / nodeA->collisionShape.mass + 1.0F / nodeB->collisionShape.mass);
   // if(fabsf(staticImpulse) <= impulseCoefficient * staticFriction) {
   //   mulVec3ByScalar(tangent, staticImpulse, frictionImpulse);
   // } else {
@@ -130,9 +135,33 @@ static void rubNodes(Node *nodeA, Node *nodeB, const float normal[3], float stat
   subVec3(nodeA->velocity, nodeB->velocity, relativeVelocity);
   mulVec3ByScalar(mulVec3ByScalar(normal, dot3(normal, nodeA->angMomentum), temp[0]), elapsed * rollingFriction, angVelocityNormal);
   subVec3(nodeA->angMomentum, angVelocityNormal, nodeA->angMomentum);
-  mulMat3Vec3(nodeA->shape.worldInverseInertia, nodeA->angMomentum, nodeA->angVelocity);
+  mulMat3Vec3(nodeA->collisionShape.worldInverseInertia, nodeA->angMomentum, nodeA->angVelocity);
   subVec3(relativeVelocity, mulVec3ByScalar(normal, dot3(relativeVelocity, normal), temp[0]), velocityTangent);
   subVec3(nodeA->velocity, mulVec3ByScalar(velocityTangent, elapsed * dynamicFriction, temp[0]), nodeA->velocity);
+}
+
+static void collideNodes(Node *nodeA, Node *nodeB, Vector *info, float staticFriction, float dynamicFriction, float rollingFriction, float elapsed) {
+  float *tempPointer[1];
+  int checkedFlag = FALSE;
+  float *checkedNormal = NULL;
+  Vector checkedNormals = initVector();
+  CollisionInfoNode2Node *collisionInfo;
+  if(nodeA->isPhysicsEnabled) {
+    iterf(info, &collisionInfo) {
+      impulseNodes(nodeA, nodeB, collisionInfo->normal, collisionInfo->contacts[0], collisionInfo->depth);
+      impulseNodes(nodeA, nodeB, collisionInfo->normal, collisionInfo->contacts[1], collisionInfo->depth);
+      iterf(&checkedNormals, &checkedNormal) {
+        if(cosVec3(collisionInfo->normal, checkedNormal) >= 0.9F) checkedFlag = TRUE;
+      }
+      if(!checkedFlag) {
+        tempPointer[0] = malloc(SIZE_VEC3);
+        memcpy_s(tempPointer[0], SIZE_VEC3, collisionInfo->normal, SIZE_VEC3);
+        rubNodes(nodeA, nodeB, tempPointer[0], staticFriction, dynamicFriction, rollingFriction, elapsed);
+        push(&checkedNormals, tempPointer[0]);
+      }
+    }
+  }
+  freeVector(&checkedNormals);
 }
 
 void updateScene(Scene *scene, float elapsed) {
@@ -145,7 +174,8 @@ void updateScene(Scene *scene, float elapsed) {
     float tempMat4[4][4];
     float tempMat3[2][3][3];
     float orientation[3][3];
-    if(node->isPhysicsEnabled) addVec3(node->force, mulVec3ByScalar(scene->acceleration, node->shape.mass, temp), node->force);
+    if(node->collisionShape.mass == 0.0F) continue;
+    if(node->isPhysicsEnabled) addVec3(node->force, mulVec3ByScalar(scene->acceleration, node->collisionShape.mass, temp), node->force);
     addVec3(node->position, mulVec3ByScalar(node->velocity, elapsed, temp), node->position);
     genRotationMat4(node->angle[0], node->angle[1], node->angle[2], tempMat4);
     convMat4toMat3(tempMat4, orientation);
@@ -153,11 +183,13 @@ void updateScene(Scene *scene, float elapsed) {
     addMat3(orientation, mulMat3ByScalar(mulMat3(tempMat3[0], orientation, tempMat3[1]), elapsed, tempMat3[0]), tempMat3[1]);
     orthogonalize3(tempMat3[1], orientation);
     getAngleFromMat3(orientation, node->angle);
-    addVec3(node->velocity, mulVec3ByScalar(node->force, elapsed / node->shape.mass, temp), node->velocity);
+    addVec3(node->velocity, mulVec3ByScalar(node->force, elapsed / node->collisionShape.mass, temp), node->velocity);
     addVec3(node->angMomentum, mulVec3ByScalar(node->torque, elapsed, temp), node->angMomentum);
-    mulMat3(orientation, mulMat3(node->shape.inverseInertia, transposeMat3(orientation, tempMat3[0]), tempMat3[1]), node->shape.worldInverseInertia);
-    mulMat3Vec3(node->shape.worldInverseInertia, node->angMomentum, node->angVelocity);
+    mulMat3(orientation, mulMat3(node->collisionShape.inverseInertia, transposeMat3(orientation, tempMat3[0]), tempMat3[1]), node->collisionShape.worldInverseInertia);
+    mulMat3Vec3(node->collisionShape.worldInverseInertia, node->angMomentum, node->angVelocity);
     clearVector(&node->collisionTargets);
+    clearVec3(node->force);
+    clearVec3(node->torque);
     node->collisionFlags = 0;
   }
   for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) {
@@ -173,63 +205,23 @@ void updateScene(Scene *scene, float elapsed) {
         unsigned int flags = flagsA | flagsB;
         if(flags) {
           if(testCollision(*node, *collisionTarget)) {
-            Vector points = initVector();
-            Vector normals = initVector();
-            Vector depths = initVector();
-            if(testCollisionPolygonPolygon(*node, *collisionTarget, &normals, &points, &depths)) {
-              CollisionInfo info;
-              if(!node->isThrough) {
-                float tempVec3[1][3];
-                float *point, (*normal)[3], *depth;
+            Vector infoA, infoB;
+            if(testCollisionPolygonPolygon(*node, *collisionTarget, &infoA, &infoB)) {
+              CollisionInfo userInfo;
+              if(!(node->isThrough || collisionTarget->isThrough)) {
                 float staticFriction, dynamicFriction, rollingFriction;
-                Vector checkedNormalsNode = initVector();
-                Vector checkedNormalsTarget = initVector();
-                staticFriction = sqrtf(node->shape.staticFriction * node->shape.staticFriction + collisionTarget->shape.staticFriction * collisionTarget->shape.staticFriction);
-                dynamicFriction = sqrtf(node->shape.dynamicFriction * node->shape.dynamicFriction + collisionTarget->shape.dynamicFriction * collisionTarget->shape.dynamicFriction);
-                rollingFriction = sqrtf(node->shape.rollingFriction * node->shape.rollingFriction + collisionTarget->shape.rollingFriction * collisionTarget->shape.rollingFriction);
-                resetIteration(&normals);
-                resetIteration(&depths);
-                normal = nextData(&normals);
-                depth = nextData(&depths);
-                iterf(&points, &point) {
-                  int checkedFlag = FALSE;
-                  float *checkedNormal = NULL;
-                  if(node->isPhysicsEnabled) {
-                    subVec3(point, node->position, tempVec3[0]);
-                    impulseNodes(node, collisionTarget, normal[1], tempVec3[0], depth[0]);
-                    iterf(&checkedNormalsTarget, &checkedNormal) {
-                      if(cosVec3(normal[1], checkedNormal) >= 0.9F) checkedFlag = TRUE;
-                    }
-                    if(!checkedFlag) {
-                      float *temp = malloc(SIZE_VEC3);
-                      memcpy_s(temp, SIZE_VEC3, normal[1], SIZE_VEC3);
-                      rubNodes(node, collisionTarget, temp, staticFriction, dynamicFriction, rollingFriction, elapsed);
-                      push(&checkedNormalsTarget, temp);
-                    }
-                  }
-                  if(collisionTarget->isPhysicsEnabled) {
-                    subVec3(point, collisionTarget->position, tempVec3[0]);
-                    impulseNodes(collisionTarget, &nodeTemp, normal[0], tempVec3[0], depth[1]);
-                    iterf(&checkedNormalsNode, &checkedNormal) {
-                      if(cosVec3(normal[0], checkedNormal) >= 0.9F) checkedFlag = TRUE;
-                    }
-                    if(!checkedFlag) {
-                      float *temp = malloc(SIZE_VEC3);
-                      memcpy_s(temp, SIZE_VEC3, normal[0], SIZE_VEC3);
-                      rubNodes(collisionTarget, &nodeTemp, temp, staticFriction, dynamicFriction, rollingFriction, elapsed);
-                      push(&checkedNormalsNode, temp);
-                    }
-                  }
-                  normal = nextData(&normals);
-                  depth = nextData(&depths);
-                }
+                staticFriction = sqrtf(node->collisionShape.staticFriction * node->collisionShape.staticFriction + collisionTarget->collisionShape.staticFriction * collisionTarget->collisionShape.staticFriction);
+                dynamicFriction = sqrtf(node->collisionShape.dynamicFriction * node->collisionShape.dynamicFriction + collisionTarget->collisionShape.dynamicFriction * collisionTarget->collisionShape.dynamicFriction);
+                rollingFriction = sqrtf(node->collisionShape.rollingFriction * node->collisionShape.rollingFriction + collisionTarget->collisionShape.rollingFriction * collisionTarget->collisionShape.rollingFriction);
+                collideNodes(node, collisionTarget, &infoA, staticFriction, dynamicFriction, rollingFriction, elapsed);
+                collideNodes(collisionTarget, node, &infoB, staticFriction, dynamicFriction, rollingFriction, elapsed);
               }
-              info.points = points;
-              info.normals = normals;
-              info.target = collisionTarget;
-              pushAlloc(&node->collisionTargets, sizeof(CollisionInfo), &info);
-              info.target = node;
-              pushAlloc(&collisionTarget->collisionTargets, sizeof(CollisionInfo), &info);
+              userInfo.target = collisionTarget;
+              userInfo.info = infoA;
+              pushAlloc(&node->collisionTargets, sizeof(CollisionInfo), &userInfo);
+              userInfo.target = node;
+              userInfo.info = infoB;
+              pushAlloc(&collisionTarget->collisionTargets, sizeof(CollisionInfo), &userInfo);
               node->collisionFlags |= flags;
               collisionTarget->collisionFlags |= flags;
             }
@@ -240,8 +232,6 @@ void updateScene(Scene *scene, float elapsed) {
   }
   for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) {
     IntervalEventNode *interval;
-    clearVec3(node->force);
-    clearVec3(node->torque);
     if(node->behaviour != NULL) {
       if(!node->behaviour(node)) {
         node = previousData(&scene->nodes);

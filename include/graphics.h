@@ -4,18 +4,12 @@
 #include<Windows.h>
 
 #include "./vector.h"
+#include "./image.h"
 
 typedef struct _Vertex {
 	float components[4];
 	unsigned char color;
 } Vertex;
-
-typedef struct {
-	unsigned int width;
-	unsigned int height;
-	unsigned char transparent;
-	unsigned char *data;
-} Image;
 
 typedef struct {
 	Image font0201;

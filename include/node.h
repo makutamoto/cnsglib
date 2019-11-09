@@ -65,6 +65,13 @@ typedef struct {
 	void (*callback)(Node*);
 } IntervalEventNode;
 
+typedef struct {
+	float normal[3];
+	float contacts[2][3];
+	float barycentric[2][3];
+	float depth;
+} CollisionInfoNode2Node;
+
 Node initNode(const char *id, Image image);
 Node initNodeUI(const char *id, Image image, unsigned char color);
 Node initNodeText(const char *id, float px, float py, unsigned int sx, unsigned int sy, int (*behaviour)(Node*));
@@ -75,9 +82,11 @@ void discardNode(Node node);
 void drawNode(Node *node);
 void applyForce(Node *node, float force[3], int mask, int rotation);
 float (*getNodeTransformation(Node node, float out[4][4]))[4];
-float (*getWorldTransfomration(Node node, float out[4][4]))[4];
+float (*getWorldTransfomration(Node *node, float out[4][4]))[4];
+
+CollisionInfoNode2Node initCollisionInfoNode2Node(Node *nodeA, Node *nodeB, float triangle[3][3], unsigned long normalIndex, unsigned long *uvIndex[3], float contacts[2][3], float depth);
 int testCollision(Node a, Node b);
-int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points, Vector *depths);
+int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBOut);
 void addIntervalEventNode(Node *node, unsigned int milliseconds, void (*callback)(Node*));
 
 Shape initShape(float mass);

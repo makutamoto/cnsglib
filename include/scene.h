@@ -30,8 +30,7 @@ typedef struct {
 
 typedef struct {
   Node *target;
-  Vector points;
-  Vector normals;
+  Vector info;
 } CollisionInfo;
 
 typedef struct {
