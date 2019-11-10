@@ -9,7 +9,7 @@
 #include "./include/matrix.h"
 #include "./include/graphics.h"
 
-#define VELOCITY_LIMIT 130.0F * 10000.0F / 3600.0F
+#define VELOCITY_LIMIT 200.0F * 10000.0F / 3600.0F
 
 Camera initCamera(float x, float y, float z, float aspect) {
   Camera camera;
