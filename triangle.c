@@ -1,6 +1,7 @@
 #include<Windows.h>
 #include<math.h>
 
+#include "./include/borland.h"
 #include "./include/triangle.h"
 #include "./include/matrix.h"
 
