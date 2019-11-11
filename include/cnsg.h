@@ -17,6 +17,7 @@
 #endif
 
 void initCNSG(unsigned int width, unsigned int height);
+float elapsedTime(LARGE_INTEGER start);
 void gameLoop(unsigned int fps, int (*loop)(float, Image*));
 
 #endif
