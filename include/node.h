@@ -77,6 +77,7 @@ Node initNodeUI(const char *id, Image image, unsigned char color);
 Node initNodeText(const char *id, float px, float py, unsigned int sx, unsigned int sy, int (*behaviour)(Node*));
 NodeIter initNodeIter(Vector *layer);
 Node* nextNode(NodeIter *iter);
+void addNodeChild(Node *parent, Node *child);
 void discardNode(Node node);
 
 void drawNode(Node *node);

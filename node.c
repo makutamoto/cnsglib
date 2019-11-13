@@ -79,6 +79,11 @@ Node* nextNode(NodeIter *iter) {
   return iter->currentNode;
 }
 
+void addNodeChild(Node *parent, Node *child) {
+  push(&parent->children, child);
+  child->parent = parent;
+}
+
 void discardNode(Node node) {
   clearVector(&node.children);
 }
