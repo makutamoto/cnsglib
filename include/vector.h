@@ -24,6 +24,8 @@ typedef struct {
 #define iterf(vector, data) for(resetIteration((vector));nextIter((vector), (void**)(data));)
 
 Vector initVector(void);
+void concatVectorAlloc(Vector *dest, Vector *src, size_t size);
+void concatVector(Vector *dest, Vector *src);
 void clearVector(Vector *vector);
 void freeVector(Vector *vector);
 

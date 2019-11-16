@@ -9,6 +9,26 @@ Vector initVector(void) {
 	return vector;
 }
 
+void concatVectorAlloc(Vector *dest, Vector *src, size_t size) {
+	VectorItem *item;
+	item = src->firstItem;
+	while(item) {
+		void *data = malloc(size);
+		memcpy_s(data, size, item->data, size);
+		push(dest, data);
+		item = item->nextItem;
+	}
+}
+
+void concatVector(Vector *dest, Vector *src) {
+	VectorItem *item;
+	item = src->firstItem;
+	while(item) {
+		push(dest, item->data);
+		item = item->nextItem;
+	}
+}
+
 void resetIteration(Vector *vector) {
 	vector->currentItem = NULL;
 }

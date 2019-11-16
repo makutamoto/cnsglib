@@ -27,6 +27,7 @@ void gameLoop(unsigned int fps, int (*loop)(float, Image*)) {
 		if(!loop(elapsed, &image)) break;
     setBufferImage(image);
     flushBuffer();
+    freeImage(image);
 		while(elapsedTime(previousClock) < delay);
 	}
 }

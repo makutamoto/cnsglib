@@ -225,7 +225,6 @@ static void projectTriangle(float points[3][4], Image image, const float uv[3][2
 	float vertexColors[3];
 	unsigned int maxCoord[2], minCoord[2];
 	float area;
-	float aspect = (float)screenSize[0] / screenSize[1];
 	for(i = 0;i < 3;i++) {
 		COPY_ARY(transformed[i], points[i]);
 		transformed[i][0] *= transformed[i][3];
@@ -233,7 +232,7 @@ static void projectTriangle(float points[3][4], Image image, const float uv[3][2
 		transformed[i][2] *= transformed[i][3];
 		if(transformed[i][2] > 1.0F) tooFar += 1;
 		transformed[i][2] *= transformed[i][3];
-		transformed[i][0] = roundf(transformed[i][0] * halfScreenSize[0] / aspect + halfScreenSize[0]);
+		transformed[i][0] = roundf(transformed[i][0] * halfScreenSize[0] + halfScreenSize[0]);
 		transformed[i][1] = roundf(transformed[i][1] * halfScreenSize[1] + halfScreenSize[1]);
 	}
 	if(tooFar == 3) return;

@@ -196,14 +196,16 @@ void updateScene(Scene *scene, float elapsed) {
     if(node->collisionMaskActive || node->collisionMaskPassive) {
       Node nodeTemp;
       Node *collisionTarget;
-      NodeIter targetIter = initNodeIter(&node->children);
+      NodeIter targetIter;
       nodeTemp = *node;
-      targetIter.currentIter.currentItem = iter.currentIter.currentItem;
+      targetIter.iterStack = initVector();
+      concatVectorAlloc(&targetIter.iterStack, &iter.iterStack, sizeof(VectorIter));
+      targetIter.currentIter = iter.currentIter;
+      targetIter.currentNode = iter.currentNode;
       for(collisionTarget = nextNode(&targetIter);collisionTarget != NULL;collisionTarget = nextNode(&targetIter)) {
         unsigned int flagsA = node->collisionMaskPassive & collisionTarget->collisionMaskActive;
         unsigned int flagsB = node->collisionMaskActive & collisionTarget->collisionMaskPassive;
-        unsigned int flags = flagsA | flagsB;
-        if(flags) {
+        if(flagsA | flagsB) {
           if(testCollision(*node, *collisionTarget)) {
             Vector infoA, infoB;
             if(testCollisionPolygonPolygon(*node, *collisionTarget, &infoA, &infoB)) {
@@ -222,8 +224,8 @@ void updateScene(Scene *scene, float elapsed) {
               userInfo.target = node;
               userInfo.info = infoB;
               pushAlloc(&collisionTarget->collisionTargets, sizeof(CollisionInfo), &userInfo);
-              node->collisionFlags |= flags;
-              collisionTarget->collisionFlags |= flags;
+              node->collisionFlags |= flagsA;
+              collisionTarget->collisionFlags |= flagsB;
             }
           }
         }
