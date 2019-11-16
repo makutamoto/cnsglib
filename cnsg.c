@@ -22,9 +22,9 @@ void gameLoop(unsigned int fps, int (*loop)(float, Image*)) {
 	QueryPerformanceCounter(&previousClock);
 	while(TRUE) {
     Image image;
+		float elapsed = min(elapsedTime(previousClock), 1.0F);
     image.width = 0;
     image.height = 0;
-		float elapsed = min(elapsedTime(previousClock), 1.0F);
 		QueryPerformanceCounter(&previousClock);
 		if(!loop(elapsed, &image)) break;
     if(!(image.width == 0 || image.height == 0)) {
