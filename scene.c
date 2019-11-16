@@ -174,6 +174,7 @@ void updateScene(Scene *scene, float elapsed) {
     float tempMat4[4][4];
     float tempMat3[2][3][3];
     float orientation[3][3];
+    CollisionInfo *info;
     if(node->collisionShape.mass == 0.0F) continue;
     if(node->isPhysicsEnabled) addVec3(node->force, mulVec3ByScalar(scene->acceleration, node->collisionShape.mass, temp), node->force);
     addVec3(node->position, mulVec3ByScalar(node->velocity, elapsed, temp), node->position);
@@ -187,7 +188,8 @@ void updateScene(Scene *scene, float elapsed) {
     addVec3(node->angMomentum, mulVec3ByScalar(node->torque, elapsed, temp), node->angMomentum);
     mulMat3(orientation, mulMat3(node->collisionShape.inverseInertia, transposeMat3(orientation, tempMat3[0]), tempMat3[1]), node->collisionShape.worldInverseInertia);
     mulMat3Vec3(node->collisionShape.worldInverseInertia, node->angMomentum, node->angVelocity);
-    clearVector(&node->collisionTargets);
+    iterf(&node->collisionTargets, &info) freeVector(&info->info);
+    freeVector(&node->collisionTargets);
     clearVec3(node->force);
     clearVec3(node->torque);
     node->collisionFlags = 0;
