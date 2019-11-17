@@ -2,9 +2,15 @@
 
 static LARGE_INTEGER frequency;
 
-void initCNSG(unsigned int width, unsigned int height) {
+void initCNSG(int argc, char *argv[], unsigned int width, unsigned int height) {
+  initSound(argc, argv);
   initInput();
 	initGraphics(width, height);
+}
+
+void deinitCNSG(void) {
+  deinitSound();
+  deinitGraphics();
 }
 
 float elapsedTime(LARGE_INTEGER start) {

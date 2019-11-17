@@ -23,6 +23,7 @@ int fopen_s(FILE** pFile, const char *filename, const char *mode);
 #define fread_s(buffer, bufferSize, elementSize, count, stream) fread(buffer, elementSize, count, stream)
 
 #define memcpy_s(dest, destSize, src, count) memcpy(dest, src, count)
+#define strcat_s(dest, size, src) strcat(dest, src)
 
 #endif
 #endif
