@@ -20,6 +20,6 @@
 void initCNSG(int argc, char *argv[], unsigned int width, unsigned int height);
 void deinitCNSG(void);
 float elapsedTime(LARGE_INTEGER start);
-void gameLoop(unsigned int fps, int (*loop)(float, Image*));
+void gameLoop(unsigned int fps, int (*loop)(float, Image*, int));
 
 #endif

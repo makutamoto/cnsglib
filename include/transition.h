@@ -3,6 +3,8 @@
 
 #include "./graphics.h"
 
-Image linearTransition(Image imageA, Image imageB, float ratio);
+Image linearTransitionH(Image imageA, Image imageB, float ratio);
+Image linearTransitionV(Image imageA, Image imageB, float ratio);
+Image ThreeDimensionTransition(Image imageA, Image imageB, float x, float y, float ratio);
 
 #endif

@@ -168,6 +168,7 @@ void updateScene(Scene *scene, float elapsed) {
   Node *node;
   NodeIter iter;
   IntervalEventScene *intervalScene;
+  scene->clock += elapsed;
   iter = initNodeIter(&scene->nodes);
   for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) {
     float temp[3];
@@ -258,6 +259,7 @@ void updateScene(Scene *scene, float elapsed) {
       interval = nextData(&node->intervalEvents);
     }
   }
+  if(scene->behaviour) scene->behaviour(scene, elapsed);
   resetIteration(&scene->intervalEvents);
   intervalScene = nextData(&scene->intervalEvents);
   while(intervalScene) {

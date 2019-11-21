@@ -19,7 +19,7 @@ void initSound(int argc, char *argv[]) {
     } else {
       ExitProcess(0);
     }
-    while(TRUE) Sleep(1000);
+    while(TRUE) Sleep(4294967295);
     ExitProcess(0);
   } else {
     strcat_s(name, sizeof(name), argv[0]);

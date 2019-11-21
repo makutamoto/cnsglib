@@ -22,17 +22,22 @@ float elapsedTime(LARGE_INTEGER start) {
 	return (float)elapsed.QuadPart / frequency.QuadPart;
 }
 
-void gameLoop(unsigned int fps, int (*loop)(float, Image*)) {
+void gameLoop(unsigned int fps, int (*loop)(float, Image*, int)) {
 	LARGE_INTEGER previousClock;
 	float delay = 1.0F / fps;
 	QueryPerformanceCounter(&previousClock);
 	while(TRUE) {
     Image image;
-		float elapsed = min(elapsedTime(previousClock), 1.0F);
+		float elapsed = elapsedTime(previousClock);
+    int sleep = FALSE;
     image.width = 0;
     image.height = 0;
+    if(elapsed > 1.0F) {
+      elapsed = 1.0F;
+      sleep = TRUE;
+    }
 		QueryPerformanceCounter(&previousClock);
-		if(!loop(elapsed, &image)) break;
+		if(!loop(elapsed, &image, sleep)) break;
     if(!(image.width == 0 || image.height == 0)) {
       setBufferImage(image);
       flushBuffer();

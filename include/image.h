@@ -8,6 +8,8 @@ typedef struct {
 	unsigned char *data;
 } Image;
 
+#define isImageSameSize(imageA, imageB) (imageA.width == imageB.width && imageA.height == imageB.height)
+
 unsigned long uvToIndex(const Image *image, float uv[2]);
 
 #endif
