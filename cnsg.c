@@ -9,6 +9,7 @@ void initCNSG(int argc, char *argv[], unsigned int width, unsigned int height) {
 }
 
 void deinitCNSG(void) {
+  deinitInput();
   deinitSound();
   deinitGraphics();
 }
@@ -37,6 +38,7 @@ void gameLoop(unsigned int fps, int (*loop)(float, Image*, int)) {
       sleep = TRUE;
     }
 		QueryPerformanceCounter(&previousClock);
+    updateController();
 		if(!loop(elapsed, &image, sleep)) break;
     if(!(image.width == 0 || image.height == 0)) {
       setBufferImage(image);

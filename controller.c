@@ -7,41 +7,40 @@
 
 static HANDLE input;
 static INPUT_RECORD inputRecords[NOF_MAX_EVENTS];
+static Vector controllerList;
 
 void initInput(void) {
   input = GetStdHandle(STD_INPUT_HANDLE);
+  controllerList = initVector();
 }
 
-Controller initController(void) {
-  Controller controller = { 0 };
-  return controller;
-}
-
-ControllerData initControllerData(WORD key, float down, float up, float *dest) {
-  ControllerData event = { 0 };
-  event.key = key;
-  event.valueDown = down;
-  event.valueUp = up;
-  event.dest = dest;
+ControllerData* initControllerData(WORD key, float down, float up, float *dest) {
+  ControllerData *event = calloc(1, sizeof(ControllerData));
+  event->key = key;
+  event->valueDown = down;
+  event->valueUp = up;
+  event->dest = dest;
+  push(&controllerList, event);
   return event;
 }
 
-ControllerData initControllerEvent(WORD key, void (*downEvent)(void), void (*upEvent)(void)) {
-  ControllerData event = { 0 };
-  event.key = key;
-  event.downEvent = downEvent;
-  event.upEvent = upEvent;
+ControllerData* initControllerEvent(WORD key, void (*downEvent)(void), void (*upEvent)(void)) {
+  ControllerData *event = calloc(1, sizeof(ControllerData));
+  event->key = key;
+  event->downEvent = downEvent;
+  event->upEvent = upEvent;
+  push(&controllerList, event);
   return event;
 }
 
-void initControllerDataCross(ControllerData events[4], WORD up, WORD left, WORD down, WORD right, float dest[2]) {
+void initControllerDataCross(ControllerData *events[4], WORD up, WORD left, WORD down, WORD right, float dest[2]) {
   events[0] = initControllerData(up, 1.0F, 0.0F, &dest[1]);
   events[1] = initControllerData(left, -1.0F, 0.0F, &dest[0]);
   events[2] = initControllerData(down, -1.0F, 0.0F, &dest[1]);
   events[3] = initControllerData(right, 1.0F, 0.0F, &dest[0]);
 }
 
-void updateController(Controller controller) {
+void updateController(void) {
   int i;
 	DWORD nofEvents;
 	KEY_EVENT_RECORD *keyEvent;
@@ -53,8 +52,8 @@ void updateController(Controller controller) {
 		switch(inputRecords[i].EventType) {
 			case KEY_EVENT:
 			  keyEvent = &inputRecords[i].Event.KeyEvent;
-        resetIteration(&controller.events);
-        controllerEvent = nextData(&controller.events);
+        resetIteration(&controllerList);
+        controllerEvent = nextData(&controllerList);
         while(controllerEvent) {
           if(keyEvent->wVirtualKeyCode == controllerEvent->key) {
             controllerEvent->state = keyEvent->bKeyDown;
@@ -66,7 +65,7 @@ void updateController(Controller controller) {
               if(controllerEvent->upEvent) controllerEvent->upEvent();
             }
           }
-          controllerEvent = nextData(&controller.events);
+          controllerEvent = nextData(&controllerList);
         }
 			  break;
 			default: break;
@@ -74,10 +73,6 @@ void updateController(Controller controller) {
 	}
 }
 
-void clearController(Controller *controller) {
-  ControllerData *data;
-  iterf(&controller->events, &data) {
-    data->state = FALSE;
-    if(data->dest) *data->dest = 0.0F;
-  }
+void deinitInput(void) {
+  freeVector(&controllerList);
 }
