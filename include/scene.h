@@ -45,7 +45,8 @@ Camera initCamera(float x, float y, float z, float aspect);
 
 Scene initScene(void);
 void addIntervalEventScene(Scene *scene, unsigned int milliseconds, void (*callback)(Scene*));
-Image drawScene(Scene *scene);
+void drawSceneWithCamera(Scene *scene, Image *output, Camera *camera);
+void drawScene(Scene *scene, Image *output);
 void updateScene(Scene *scene, float elapsed);
 void discardScene(Scene *scene);
 

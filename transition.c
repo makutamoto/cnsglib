@@ -54,6 +54,7 @@ Image ThreeDimensionTransition(Image imageA, Image imageB, float x, float y, flo
     fprintf(stderr, "ThreeDimensionTransition(): The image size must be the same.\n");
     return imageA;
   }
+  output = initImageBulk(imageA.width, imageA.height, NULL_COLOR);
   fov = PI / 2.0F + PI / 2.1F * ratio;
   scene = initScene();
   scene.camera.fov = fov;
@@ -74,7 +75,7 @@ Image ThreeDimensionTransition(Image imageA, Image imageB, float x, float y, flo
   nodeB.shape = initShapePlaneInv(backgroundWidth, backgroundWidth / scene.camera.aspect, BLACK);
   nodeB.angle[0] = PI;
   push(&scene.nodes, &nodeB);
-  output = drawScene(&scene);
+  drawScene(&scene, &output);
   discardNode(nodeA);
   discardScene(&scene);
   return output;

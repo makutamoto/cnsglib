@@ -5,13 +5,12 @@ static LARGE_INTEGER frequency;
 void initCNSG(int argc, char *argv[], unsigned int width, unsigned int height) {
   initSound(argc, argv);
   initInput();
-	initGraphics(width, height);
+	initScreen(width, height);
 }
 
 void deinitCNSG(void) {
   deinitInput();
   deinitSound();
-  deinitGraphics();
 }
 
 float elapsedTime(LARGE_INTEGER start) {
@@ -41,8 +40,7 @@ void gameLoop(unsigned int fps, int (*loop)(float, Image*, int)) {
     updateController();
 		if(!loop(elapsed, &image, sleep)) break;
     if(!(image.width == 0 || image.height == 0)) {
-      setBufferImage(image);
-      flushBuffer();
+      flushBuffer(&image);
       freeImage(image);
     }
 		while(elapsedTime(previousClock) < delay);

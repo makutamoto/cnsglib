@@ -32,7 +32,7 @@ Scene initScene(void) {
   memset(&scene, 0, sizeof(Scene));
   scene.acceleration[1] = -98.0F;
   scene.nodes = initVector();
-  scene.camera = initCamera(0.0F, 0.0F, 0.0F, 1.0F);
+  scene.camera = initCamera(0.0F, 0.0F, 0.0F, 0.0F);
   return scene;
 }
 
@@ -44,45 +44,55 @@ void addIntervalEventScene(Scene *scene, unsigned int milliseconds, void (*callb
   push(&scene->intervalEvents, interval);
 }
 
-Image drawScene(Scene *scene) {
+void drawSceneWithCamera(Scene *scene, Image *output, Camera *camera) {
   Node *node;
   float lookAt[4][4];
   float projection[4][4];
-  float camera[4][4];
+  float cameraMatrix[4][4];
+  float *zBuffer;
+  float aspect;
+  if(output->width == 0 || output->height == 0) {
+    aspect = 1.0F;
+  } else {
+    aspect = camera->aspect == 0.0F ? (float)output->width / output->height : camera->aspect;
+  }
   clearTransformation();
-  if(scene->camera.parent) {
+  if(camera->parent) {
     float temp[4];
     float tempMat4[1][4][4];
     float cameraParent[4][4];
     float cameraPosition[4];
     float cameraTarget[4];
-    getWorldTransfomration(scene->camera.parent, cameraParent);
-    if(scene->camera.isRotationDisabled) {
+    getWorldTransfomration(camera->parent, cameraParent);
+    if(camera->isRotationDisabled) {
       genIdentityMat4(tempMat4[0]);
       tempMat4[0][0][3] = cameraParent[0][3];
       tempMat4[0][1][3] = cameraParent[1][3];
       tempMat4[0][2][3] = cameraParent[2][3];
       memcpy_s(cameraParent, SIZE_MAT4, tempMat4[0], SIZE_MAT4);
     }
-    mulMat4Vec4(cameraParent, convVec3toVec4(scene->camera.position, temp), cameraPosition);
-    if(scene->camera.positionMask[0]) cameraPosition[0] = scene->camera.parent->position[0] + scene->camera.position[0];
-    if(scene->camera.positionMask[1]) cameraPosition[1] = scene->camera.parent->position[1] + scene->camera.position[1];
-    if(scene->camera.positionMask[2]) cameraPosition[2] = scene->camera.parent->position[2] + scene->camera.position[2];
-    mulMat4Vec4(cameraParent, convVec3toVec4(scene->camera.target, temp), cameraTarget);
-    genLookAtMat4(cameraPosition, cameraTarget, scene->camera.worldUp, lookAt);
+    mulMat4Vec4(cameraParent, convVec3toVec4(camera->position, temp), cameraPosition);
+    if(camera->positionMask[0]) cameraPosition[0] = camera->parent->position[0] + camera->position[0];
+    if(camera->positionMask[1]) cameraPosition[1] = camera->parent->position[1] + camera->position[1];
+    if(camera->positionMask[2]) cameraPosition[2] = camera->parent->position[2] + camera->position[2];
+    mulMat4Vec4(cameraParent, convVec3toVec4(camera->target, temp), cameraTarget);
+    genLookAtMat4(cameraPosition, cameraTarget, camera->worldUp, lookAt);
   } else {
-    genLookAtMat4(scene->camera.position, scene->camera.target, scene->camera.worldUp, lookAt);
+    genLookAtMat4(camera->position, camera->target, camera->worldUp, lookAt);
   }
-  genPerspectiveMat4(scene->camera.fov, scene->camera.nearLimit, scene->camera.farLimit, scene->camera.aspect, projection);
-  mulMat4(projection, lookAt, camera);
-  setZNear(scene->camera.nearLimit);
-  clearBuffer(scene->background);
-  clearZBuffer();
+  genPerspectiveMat4(camera->fov, camera->nearLimit, camera->farLimit, aspect, projection);
+  mulMat4(projection, lookAt, cameraMatrix);
+  setZNear(camera->nearLimit);
+  clearImage(output, scene->background);
+  zBuffer = initZBuffer(output->width, output->height);
   iterf(&scene->nodes, &node) {
-    setCameraMat4(camera);
-    drawNode(node);
+    setCameraMat4(cameraMatrix);
+    drawNode(node, zBuffer, output);
   }
-  return getBufferImage();
+}
+
+void drawScene(Scene *scene, Image *output) {
+  drawSceneWithCamera(scene, output, &scene->camera);
 }
 
 static void impulseNodes(Node *nodeA, Node *nodeB, float normal[3], float point[3], float depth) {

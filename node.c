@@ -36,16 +36,16 @@ Node initNodeUI(const char *id, Image image, unsigned char color) {
   return node;
 }
 
-Node initNodeText(const char *id, float px, float py, unsigned int sx, unsigned int sy, int (*behaviour)(Node*)) {
+Node initNodeText(const char *id, float px, float py, Align alignX, Align alignY, unsigned int sx, unsigned int sy, int (*behaviour)(Node*)) {
   Node node;
-  unsigned int size[2];
-  getScreenSize(size);
   node = initNodeUI(id, initImage(sx, sy, BLACK, BLACK), NULL_COLOR);
-  node.position[0] = px * 100.0F / size[0] + (sign(px) == -1 ? 100.0F : 0.0F);
-  node.position[1] = py * 100.0F / size[1] + (sign(py) == -1 ? 100.0F : 0.0F);
-	node.scale[0] = sx * 100.0F / size[0];
-	node.scale[1] = sy * 100.0F / size[1];
+  node.position[0] = px;
+  node.position[1] = py;
+	node.scale[0] = sx;
+	node.scale[1] = sy;
   node.behaviour = behaviour;
+  node.interfaceAlign[0] = alignX;
+  node.interfaceAlign[1] = alignY;
   return node;
 }
 
@@ -88,11 +88,44 @@ void discardNode(Node node) {
   clearVector(&node.children);
 }
 
-void drawNode(Node *node) {
+void drawNode(Node *node, float zBuffer[], Image *output) {
   Node *child;
+  unsigned int halfWidth, halfHeight;
+  halfWidth = output->width / 2;
+  halfHeight = output->height / 2;
 	pushTransformation();
   if(node->isInterface) {
-    translateTransformation((node->position[0] + node->scale[0] / 2.0F) / 50.0F - 1.0F, (node->position[1] + node->scale[1] / 2.0F) / 50.0F - 1.0F, 0.0F);
+    float x, y;
+    float halfScale[2];
+    halfScale[0] = node->scale[0] / 2.0F;
+    halfScale[1] = node->scale[1] / 2.0F;
+    switch(node->interfaceAlign[0]) {
+      case LEFT:
+      case TOP:
+        x = node->position[0] + halfScale[0];
+        break;
+      case CENTER:
+        x = halfWidth + node->position[0];
+        break;
+      case RIGHT:
+      case BOTTOM:
+        x = output->width - node->position[0] - halfScale[0];
+        break;
+    }
+    switch(node->interfaceAlign[1]) {
+      case TOP:
+      case LEFT:
+        y = node->position[1] + halfScale[1];
+        break;
+      case CENTER:
+        y = halfHeight + node->position[1];
+        break;
+      case BOTTOM:
+      case RIGHT:
+        y = output->height - node->position[1] - halfScale[1];
+        break;
+    }
+    translateTransformation(x / halfWidth - 1.0F, y / halfHeight - 1.0F, 0.0F);
   } else {
     translateTransformation(node->position[0], node->position[1], node->position[2]);
   }
@@ -100,14 +133,14 @@ void drawNode(Node *node) {
   pushTransformation();
   if(node->isInterface) {
     clearCameraMat4();
-    scaleTransformation(node->scale[0] / 50.0F, node->scale[1] / 50.0F, 1.0F);
+    scaleTransformation(node->scale[0] / halfWidth, node->scale[1] / halfHeight, 1.0F);
   } else {
     scaleTransformation(node->scale[0], node->scale[1], node->scale[2]);
   }
   getTransformation(node->lastTransformation);
   if(node->isVisible) {
     clearAABB();
-    fillPolygons(node->shape.vertices, node->shape.indices, node->texture, node->shape.uv, node->shape.uvIndices);
+    fillPolygons(node->shape.vertices, node->shape.indices, node->texture, node->shape.uv, node->shape.uvIndices, zBuffer, output);
     getAABB(node->aabb);
   } else {
     getShapeAABB(node->shape, node->lastTransformation, node->aabb);
@@ -116,7 +149,7 @@ void drawNode(Node *node) {
   resetIteration(&node->children);
   child = previousData(&node->children);
   while(child) {
-    drawNode(child);
+    drawNode(child, zBuffer, output);
     child = previousData(&node->children);
   }
   popTransformation();

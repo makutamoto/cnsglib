@@ -6,6 +6,10 @@
 #include "./graphics.h"
 #include "./vector.h"
 
+typedef enum {
+	LEFT, CENTER, RIGHT, TOP, BOTTOM
+} Align;
+
 typedef struct {
 	Vector indices;
 	Vector vertices;
@@ -48,6 +52,7 @@ typedef struct _Node {
 	int (*behaviour)(struct _Node*);
 	int isPhysicsEnabled;
 	int isInterface;
+	Align interfaceAlign[2];
 	int isVisible;
 	int isThrough;
 	void *data;
@@ -74,13 +79,13 @@ typedef struct {
 
 Node initNode(const char *id, Image image);
 Node initNodeUI(const char *id, Image image, unsigned char color);
-Node initNodeText(const char *id, float px, float py, unsigned int sx, unsigned int sy, int (*behaviour)(Node*));
+Node initNodeText(const char *id, float px, float py, Align alignX, Align alignY, unsigned int sx, unsigned int sy, int (*behaviour)(Node*));
 NodeIter initNodeIter(Vector *layer);
 Node* nextNode(NodeIter *iter);
 void addNodeChild(Node *parent, Node *child);
 void discardNode(Node node);
 
-void drawNode(Node *node);
+void drawNode(Node *node, float zBuffer[], Image *output);
 void applyForce(Node *node, float force[3], int mask, int rotation);
 float (*getNodeTransformation(Node node, float out[4][4]))[4];
 float (*getWorldTransfomration(Node *node, float out[4][4]))[4];
