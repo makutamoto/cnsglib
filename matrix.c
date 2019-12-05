@@ -12,11 +12,46 @@ float *convVec3toVec4(const float in[3], float out[4]) {
 	return out;
 }
 
+float *convVec4toVec3(const float in[4], float out[3]) {
+	memcpy_s(out, 3 * sizeof(float), in, 3 * sizeof(float));
+	return out;
+}
+
+float *extractComponents3(const float in[3], int mask, float out[3]) {
+	out[0] = (mask & X_MASK) ? in[0] : 0.0F;
+	out[1] = (mask & Y_MASK) ? in[1] : 0.0F;
+	out[2] = (mask & Z_MASK) ? in[2] : 0.0F;
+	return out;
+}
+
 float (*convMat4toMat3(float in[4][4], float out[3][3]))[3] {
 	memcpy_s(out[0], 3 * sizeof(float), in[0], 3 * sizeof(float));
 	memcpy_s(out[1], 3 * sizeof(float), in[1], 3 * sizeof(float));
 	memcpy_s(out[2], 3 * sizeof(float), in[2], 3 * sizeof(float));
 	return out;
+}
+
+float* initVec3(float vec[3], int mask) {
+	vec[0] = (mask & X_MASK) ? 1.0F : 0.0F;
+	vec[1] = (mask & Y_MASK) ? 1.0F : 0.0F;
+	vec[2] = (mask & Z_MASK) ? 1.0F : 0.0F;
+	return vec;
+}
+
+float* setVec3(float vec[3], float val, int mask) {
+	if(mask & X_MASK) vec[0] = val;
+	if(mask & Y_MASK) vec[1] = val;
+	if(mask & Z_MASK) vec[2] = val;
+	return vec;
+}
+
+int equalVec3(float a[3], float b[3]) {
+	if(a[0] == b[0] && a[1] == b[1] && a[2] == b[2]) return TRUE;
+	return FALSE;
+}
+
+float cosVec3(float a[3], float b[3]) {
+	return dot3(a, b) / (length3(a) * length3(b));
 }
 
 float *clearVec3(float in[3]) {
@@ -272,6 +307,14 @@ float	(*divMat3ByScalar(const float in[3][3], float scalar, float out[3][3]))[3]
 	return out;
 }
 
+float	(*divMat4ByScalar(const float in[4][4], float scalar, float out[4][4]))[4] {
+	int r, c;
+	for(r = 0;r < 4;r++) {
+		for(c = 0;c < 4;c++) out[r][c] = in[r][c] / scalar;
+	}
+	return out;
+}
+
 float	(*mulMat4(const float a[4][4], const float b[4][4], float out[4][4]))[4] {
 	float b0[4];
 	float b1[4];
@@ -437,11 +480,62 @@ float det3(float in[3][3]) {
   	- in[0][2] * in[1][1] * in[2][0] - in[0][1] * in[1][0] * in[2][2] - in[0][0] * in[1][2] * in[2][1];
 }
 
+float det4(float in[4][4]) {
+	float tempMat3[3][3];
+  float a = in[0][0] * det3(cofactor4(in, 0, 0, tempMat3));
+	float b = in[0][1] * det3(cofactor4(in, 0, 1, tempMat3));
+	float c = in[0][2] * det3(cofactor4(in, 0, 2, tempMat3));
+	float d = in[0][3] * det3(cofactor4(in, 0, 3, tempMat3));
+  return a - b + c - d;
+}
+
 float (*inverse3(float in[3][3], float out[3][3]))[3] {
     float det = det3(in);
     float adjugate[3][3];
 		adjugate3(in, adjugate);
 		divMat3ByScalar(adjugate, det, out);
+		return out;
+}
+
+float (*cofactor4(const float in[4][4], int row, int col, float out[3][3]))[3] {
+	int r, c;
+	int cords[2] = { 0, 0 };
+	for(r = 0;r < 4;r++) {
+			if(r == row) continue;
+			cords[1] = 0;
+			for(c = 0;c < 4;c++) {
+					if(c == col) continue;
+					out[cords[0]][cords[1]] = in[r][c];
+					cords[1] += 1;
+			}
+			cords[0] += 1;
+	}
+	return out;
+}
+
+float (*cofactorsMat4(const float in[4][4], float out[4][4]))[4] {
+	float temp[3][3];
+	int r, c;
+	for(r = 0;r < 4;r++) {
+		for(c = 0;c < 4;c++) {
+			out[r][c] = det3(cofactor4(in, r, c, temp));
+			if(r % 2 ^ c % 2) out[r][c] *= -1.0F;
+		}
+	}
+	return out;
+}
+
+float (*adjugate4(float in[4][4], float out[4][4]))[4] {
+	float temp[4][4];
+  transposeMat4(cofactorsMat4(in, temp), out);
+	return out;
+}
+
+float (*inverse4(float in[4][4], float out[4][4]))[4] {
+    float det = det4(in);
+    float adjugate[4][4];
+		adjugate4(in, adjugate);
+		divMat4ByScalar(adjugate, det, out);
 		return out;
 }
 
@@ -734,6 +828,15 @@ float (*genInertiaTensorBox(float mass, float width, float height, float depth, 
 	out[2][2] = pre * (width * width + height * height);
 	return out;
 }
+
+// float (*genInertiaTensorCylinder(float mass, float radius, float height, float out[3][3]))[3] {
+// 	float pre = mass / 12.0F * (3.0F * radius * radius + height * height);
+// 	memset(out, 0, 9 * sizeof(float));
+// 	out[0][0] = pre;
+// 	out[1][1] = pre;
+// 	out[2][2] = mass / 2.0F * ();
+// 	return out;
+// }
 
 void printVec3(float vec[3]) {
 	int i;

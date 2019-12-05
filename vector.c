@@ -1,10 +1,32 @@
 #include<Windows.h>
+#include<stdarg.h>
 
+#include "./include/borland.h"
 #include "./include/vector.h"
 
 Vector initVector(void) {
 	Vector vector = { 0 };
 	return vector;
+}
+
+void concatVectorAlloc(Vector *dest, Vector *src, size_t size) {
+	VectorItem *item;
+	item = src->firstItem;
+	while(item) {
+		void *data = malloc(size);
+		memcpy_s(data, size, item->data, size);
+		push(dest, data);
+		item = item->nextItem;
+	}
+}
+
+void concatVector(Vector *dest, Vector *src) {
+	VectorItem *item;
+	item = src->firstItem;
+	while(item) {
+		push(dest, item->data);
+		item = item->nextItem;
+	}
 }
 
 void resetIteration(Vector *vector) {
@@ -27,6 +49,15 @@ void* nextData(Vector *vector) {
 		vector->currentItem = vector->currentItem->nextItem;
 	}
 	return vector->currentItem->data;
+}
+
+int nextIter(Vector *vector, void **data) {
+	*data = nextData(vector);
+	if(*data) {
+		return TRUE;
+	} else {
+		return FALSE;
+	}
 }
 
 void* previousData(Vector *vector) {
@@ -60,9 +91,43 @@ int push(Vector *vector, void *data) {
 	return TRUE;
 }
 
+int pushAlloc(Vector *vector, size_t size, void *data) {
+	void *mem = malloc(size);
+	memcpy_s(mem, size, data, size);
+	if(push(vector, mem)) return TRUE;
+	return FALSE;
+}
+
+int pushUntilNull(Vector *vector, ...) {
+	va_list ap;
+	void *data;
+	va_start(ap, vector);
+	data = va_arg(ap, void*);
+	while(data) {
+		if(!push(vector, data)) return FALSE;
+		data = va_arg(ap, void*);
+	}
+	va_end(ap);
+	return TRUE;
+}
+
+int pushAllocUntilNull(Vector *vector, size_t size, ...) {
+	va_list ap;
+	void *data;
+	va_start(ap, size);
+	for(data = va_arg(ap, void*);data != NULL;data = va_arg(ap, void*)) {
+		if(!pushAlloc(vector, size, data)) return FALSE;
+	}
+	va_end(ap);
+	return TRUE;
+}
+
 void* pop(Vector *vector) {
-	VectorItem *previousItem = vector->lastItem->previousItem;
-	void *data = vector->lastItem->data;
+	VectorItem *previousItem;
+	void *data;
+	if(vector->lastItem == NULL) return NULL;
+	previousItem = vector->lastItem->previousItem;
+	data = vector->lastItem->data;
 	free(vector->lastItem);
 	if(previousItem == NULL) {
 		vector->firstItem = NULL;
@@ -193,4 +258,29 @@ void clearVector(Vector *vector) {
 
 void freeVector(Vector *vector) {
 	while(vector->length > 0) free(pop(vector));
+}
+
+VectorIter initVectorIter(Vector *vector) {
+	VectorIter iter;
+	iter.vector = vector;
+	iter.currentItem = NULL;
+	return iter;
+}
+
+void* nextDataIter(VectorIter *iter) {
+	if(iter->currentItem == NULL) {
+		iter->currentItem = iter->vector->firstItem;
+	} else {
+		iter->currentItem = iter->currentItem->nextItem;
+	}
+	return (iter->currentItem == NULL) ? NULL : iter->currentItem->data;
+}
+
+void* previousDataIter(VectorIter *iter) {
+	if(iter->currentItem == NULL) {
+		iter->currentItem = iter->vector->lastItem;
+	} else {
+		iter->currentItem = iter->currentItem->previousItem;
+	}
+	return (iter->currentItem == NULL) ? NULL : iter->currentItem->data;
 }

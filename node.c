@@ -8,6 +8,8 @@
 #include "./include/graphics.h"
 #include "./include/vector.h"
 #include "./include/matrix.h"
+#include "./include/colors.h"
+#include "./include/triangle.h"
 
 #define OBJ_LINE_BUFFER_SIZE 128
 #define OBJ_WORD_BUFFER_SIZE 32
@@ -21,32 +23,109 @@ Node initNode(const char *id, Image image) {
   node.scale[2] = 1.0;
 	node.texture = image;
   node.children = initVector();
+  node.isVisible = TRUE;
+  genIdentityMat4(node.lastTransformation);
   return node;
 }
 
 Node initNodeUI(const char *id, Image image, unsigned char color) {
   Node node;
-  memset(&node, 0, sizeof(Node));
-  memcpy_s(node.id, sizeof(node.id), id, min(sizeof(node.id), strlen(id)));
-  node.scale[0] = 1.0F;
-  node.scale[1] = 1.0F;
-  node.scale[2] = 1.0F;
-	node.texture = image;
+  node = initNode(id, image);
   node.shape = initShapePlaneInv(1.0F, 1.0F, color);
-  node.children = initVector();
   node.isInterface = TRUE;
   return node;
+}
+
+Node initNodeText(const char *id, float px, float py, Align alignX, Align alignY, unsigned int sx, unsigned int sy, int (*behaviour)(Node*)) {
+  Node node;
+  node = initNodeUI(id, initImage(sx, sy, BLACK, BLACK), NULL_COLOR);
+  node.position[0] = px;
+  node.position[1] = py;
+	node.scale[0] = sx;
+	node.scale[1] = sy;
+  node.behaviour = behaviour;
+  node.interfaceAlign[0] = alignX;
+  node.interfaceAlign[1] = alignY;
+  return node;
+}
+
+NodeIter initNodeIter(Vector *layer) {
+  NodeIter iter;
+  iter.iterStack = initVector();
+  iter.currentIter = initVectorIter(layer);
+  iter.currentNode = NULL;
+  return iter;
+}
+
+Node* nextNode(NodeIter *iter) {
+  if(iter->currentNode == NULL) {
+    iter->currentNode = nextDataIter(&iter->currentIter);
+  } else {
+    if(iter->currentNode->children.length != 0) {
+      pushAlloc(&iter->iterStack, sizeof(VectorIter), &iter->currentIter);
+      iter->currentIter = initVectorIter(&iter->currentNode->children);
+      iter->currentNode = nextDataIter(&iter->currentIter);
+    } else {
+      iter->currentNode = nextDataIter(&iter->currentIter);
+      if(iter->currentNode == NULL) {
+        VectorIter *iterTemp = pop(&iter->iterStack);
+        if(iterTemp == NULL) return NULL;
+        iter->currentIter = *iterTemp;
+        free(iterTemp);
+        iter->currentNode = nextDataIter(&iter->currentIter);
+      }
+    }
+  }
+  return iter->currentNode;
+}
+
+void addNodeChild(Node *parent, Node *child) {
+  push(&parent->children, child);
+  child->parent = parent;
 }
 
 void discardNode(Node node) {
   clearVector(&node.children);
 }
 
-void drawNode(Node *node) {
+void drawNode(Node *node, float zBuffer[], Image *output) {
   Node *child;
+  unsigned int halfWidth, halfHeight;
+  halfWidth = output->width / 2;
+  halfHeight = output->height / 2;
 	pushTransformation();
   if(node->isInterface) {
-    translateTransformation((node->position[0] + node->scale[0] / 2.0F) / 50.0F - 1.0F, (node->position[1] + node->scale[1] / 2.0F) / 50.0F - 1.0F, 0.0F);
+    float x, y;
+    float halfScale[2];
+    halfScale[0] = node->scale[0] / 2.0F;
+    halfScale[1] = node->scale[1] / 2.0F;
+    switch(node->interfaceAlign[0]) {
+      case LEFT:
+      case TOP:
+        x = node->position[0] + halfScale[0];
+        break;
+      case CENTER:
+        x = halfWidth + node->position[0];
+        break;
+      case RIGHT:
+      case BOTTOM:
+        x = output->width - node->position[0] - halfScale[0];
+        break;
+    }
+    switch(node->interfaceAlign[1]) {
+      case TOP:
+      case LEFT:
+        y = node->position[1] + halfScale[1];
+        break;
+      case CENTER:
+        y = halfHeight + node->position[1];
+        break;
+      case BOTTOM:
+      case RIGHT:
+        y = output->height - node->position[1] - halfScale[1];
+        break;
+    }
+    translateTransformation(x / halfWidth - 1.0F, y / halfHeight - 1.0F, 0.0F);
   } else {
     translateTransformation(node->position[0], node->position[1], node->position[2]);
   }
@@ -54,34 +133,53 @@ void drawNode(Node *node) {
   pushTransformation();
   if(node->isInterface) {
     clearCameraMat4();
-    scaleTransformation(node->scale[0] / 50.0F, node->scale[1] / 50.0F, 1.0F);
+    scaleTransformation(node->scale[0] / halfWidth, node->scale[1] / halfHeight, 1.0F);
   } else {
     scaleTransformation(node->scale[0], node->scale[1], node->scale[2]);
   }
   getTransformation(node->lastTransformation);
-  clearAABB();
-	fillPolygons(node->shape.vertices, node->shape.indices, node->texture, node->shape.uv, node->shape.uvIndices);
-  getAABB(node->aabb);
+  if(node->isVisible) {
+    clearAABB();
+    fillPolygons(node->shape.vertices, node->shape.indices, node->texture, node->shape.uv, node->shape.uvIndices, zBuffer, output);
+    getAABB(node->aabb);
+  } else {
+    getShapeAABB(node->shape, node->lastTransformation, node->aabb);
+  }
   popTransformation();
   resetIteration(&node->children);
   child = previousData(&node->children);
   while(child) {
-    drawNode(child);
+    drawNode(child, zBuffer, output);
     child = previousData(&node->children);
   }
   popTransformation();
 }
 
+void applyForce(Node *node, float force[3], int mask, int rotation) {
+  float temp[3];
+  float tempMat4[4][4];
+  float tempMat3[3][3];
+  if(rotation) {
+    genRotationMat4(node->angle[0], node->angle[1], node->angle[2], tempMat4);
+    mulMat3Vec3(convMat4toMat3(tempMat4, tempMat3), force, temp);
+  } else {
+    memcpy_s(temp, SIZE_VEC3, force, SIZE_VEC3);
+  }
+  if(mask & X_MASK) node->force[0] += temp[0];
+  if(mask & Y_MASK) node->force[1] += temp[1];
+  if(mask & Z_MASK) node->force[2] += temp[2];
+}
+
 float (*getNodeTransformation(Node node, float out[4][4]))[4] {
   float temp[2][4][4];
   genTranslationMat4(node.position[0], node.position[1], node.position[2], temp[0]);
-  genTranslationMat4(node.angle[0], node.angle[1], node.angle[2], temp[1]);
+  genRotationMat4(node.angle[0], node.angle[1], node.angle[2], temp[1]);
   mulMat4(temp[0], temp[1], out);
   return out;
 }
 
-float (*getWorldTransfomration(Node node, float out[4][4]))[4] {
-  Node *current = &node;
+float (*getWorldTransfomration(Node *node, float out[4][4]))[4] {
+  Node *current = node;
   genIdentityMat4(out);
   while(current) {
     float temp[2][4][4];
@@ -97,165 +195,6 @@ int testCollision(Node a, Node b) {
   return (a.aabb[0][0] <= b.aabb[0][1] && a.aabb[0][1] >= b.aabb[0][0]) &&
          (a.aabb[1][0] <= b.aabb[1][1] && a.aabb[1][1] >= b.aabb[1][0]) &&
          (a.aabb[2][0] <= b.aabb[2][1] && a.aabb[2][1] >= b.aabb[2][0]);
-}
-
-int calcPlaneEquation(const float triangle[3][3], const float target[3][3], float n[3], float *d, float dv[3]) {
-  float temp[2][3];
-  cross(subVec3(triangle[1], triangle[0], temp[0]), subVec3(triangle[2], triangle[0], temp[1]), n);
-  *d = dot3(mulVec3ByScalar(n, -1.0F, temp[0]), triangle[0]);
-  dv[0] = dot3(n, target[0]) + *d;
-  dv[1] = dot3(n, target[1]) + *d;
-  dv[2] = dot3(n, target[2]) + *d;
-  if(dv[0] != 0 && dv[1] != 0 && dv[2] != 0) {
-    int signDv1 = sign(dv[1]);
-    if(sign(dv[0]) == signDv1 && signDv1 == sign(dv[2])) {
-      return -1;
-    }
-  }
-  return 0;
-}
-
-void calcLineParameters(const float triangle[3][3], const float d[3], const float dv[3], float t[2]) {
-  float pv[3];
-  int signA, signB, signC;
-  int indexA, indexB, indexC;
-  signA = sign(dv[0]);
-  signB = sign(dv[1]);
-  signC = sign(dv[2]);
-  if(signA == signB) {
-    indexA = 0;
-    indexB = 2;
-    indexC = 1;
-  } else if(signB == signC) {
-    indexA = 1;
-    indexB = 0;
-    indexC = 2;
-  } else {
-    indexA = 0;
-    indexB = 1;
-    indexC = 2;
-  }
-  pv[0] = dot3(d, triangle[0]);
-  pv[1] = dot3(d, triangle[1]);
-  pv[2] = dot3(d, triangle[2]);
-  t[0] = pv[indexA] + (pv[indexB] - pv[indexA]) * dv[indexA] / (dv[indexA] - dv[indexB]);
-  t[1] = pv[indexC] + (pv[indexB] - pv[indexC]) * dv[indexC] / (dv[indexC] - dv[indexB]);
-}
-
-void projectTriangleOnAxes(const float triangle[3][3], int indexA, int indexB, float out[3][3]) {
-  out[0][0] = triangle[0][indexA];
-  out[0][1] = triangle[0][indexB];
-  out[0][2] = 0.0F;
-  out[1][0] = triangle[1][indexA];
-  out[1][1] = triangle[1][indexB];
-  out[1][2] = 0.0F;
-  out[2][0] = triangle[2][indexA];
-  out[2][1] = triangle[2][indexB];
-  out[2][2] = 0.0F;
-}
-
-int testLine2dIntersection(const float lineA[2][3], const float lineB[2][3]) {
-  float denominator;
-  float uA, uB;
-  denominator = (lineB[1][1] - lineB[0][1]) * (lineA[1][0] - lineA[0][0]) - (lineB[1][0] - lineB[0][0]) * (lineA[1][1] - lineA[0][1]);
-  if(denominator == 0.0F) return FALSE;
-  uA = ((lineB[1][0] - lineB[0][0]) * (lineA[0][1] - lineB[0][1]) - (lineB[1][1] - lineB[0][1]) * (lineA[0][0] - lineB[0][0])) / denominator;
-  uB = ((lineA[1][0] - lineA[0][0]) * (lineA[0][1] - lineB[0][1]) - (lineA[1][1] - lineA[0][1]) * (lineA[0][0] - lineB[0][0])) / denominator;
-  if((0.0F <= uA && uA <= 1.0F) && (0.0F <= uB && uB <= 1.0F)) return TRUE;
-  return FALSE;
-}
-
-void edgesOfTriangle(const float triangle[3][3], float out[3][2][3]) {
-  COPY_ARY(out[0][0], triangle[0]);
-  COPY_ARY(out[0][1], triangle[1]);
-  COPY_ARY(out[1][0], triangle[1]);
-  COPY_ARY(out[1][1], triangle[2]);
-  COPY_ARY(out[2][0], triangle[2]);
-  COPY_ARY(out[2][1], triangle[0]);
-}
-
-int pointInTriangle(const float triangle[3][3], const float point[3]) {
-  float temp[3][3];
-  float zA, zB, zC;
-  float signB;
-  zA = cross(subVec3(triangle[1], triangle[0], temp[0]), subVec3(point, triangle[0], temp[1]), temp[2])[2];
-  zB = cross(subVec3(triangle[2], triangle[1], temp[0]), subVec3(point, triangle[1], temp[1]), temp[2])[2];
-  zC = cross(subVec3(triangle[0], triangle[2], temp[0]), subVec3(point, triangle[2], temp[1]), temp[2])[2];
-  signB = sign(zB);
-  return sign(zA) == signB && signB == sign(zC);
-}
-
-int testCollisionTriangleTriangle(const float a[3][3], const float b[3][3]) {
-  // using Moller's algorithm: A Fast Triangle-Triangle Intersection Test
-  float n1[3], n2[3];
-  float d1, d2;
-  float dv1[3], dv2[3];
-  if(calcPlaneEquation(b, a, n2, &d2, dv2) || calcPlaneEquation(a, b, n1, &d1, dv1)) return FALSE;
-  if(dv1[0] == 0 && dv1[1] == 0 && dv1[2] == 0) {
-    int i;
-    float triangleAOnAxes[3][3][3], triangleBOnAxes[3][3][3];
-    float areas[3];
-    float triangleAEdges[3][2][3], triangleBEdges[3][2][3];
-    int triangleIndex;
-    projectTriangleOnAxes(a, 0, 1, triangleAOnAxes[0]);
-    projectTriangleOnAxes(a, 1, 2, triangleAOnAxes[1]);
-    projectTriangleOnAxes(a, 2, 0, triangleAOnAxes[2]);
-    projectTriangleOnAxes(a, 0, 1, triangleBOnAxes[0]);
-    projectTriangleOnAxes(a, 1, 2, triangleBOnAxes[1]);
-    projectTriangleOnAxes(a, 2, 0, triangleBOnAxes[2]);
-    areas[0] = areaOfTriangle(triangleAOnAxes[0]);
-    areas[1] = areaOfTriangle(triangleAOnAxes[1]);
-    areas[2] = areaOfTriangle(triangleAOnAxes[2]);
-    if(areas[0] > areas[1]) {
-      if(areas[0] > areas[2]) {
-        triangleIndex = 0;
-      } else {
-        triangleIndex = 2;
-      }
-    } else {
-      if(areas[1] > areas[2]) {
-        triangleIndex = 1;
-      } else {
-        triangleIndex = 2;
-      }
-    }
-    edgesOfTriangle(triangleAOnAxes[triangleIndex], triangleAEdges);
-    edgesOfTriangle(triangleBOnAxes[triangleIndex], triangleBEdges);
-    for(i = 0;i < 3;i++) {
-      if(testLine2dIntersection(triangleAEdges[i], triangleBEdges[0]) ||
-        testLine2dIntersection(triangleAEdges[i], triangleBEdges[1]) ||
-        testLine2dIntersection(triangleAEdges[i], triangleBEdges[2])) {
-          return TRUE;
-      }
-    }
-    if(pointInTriangle(triangleAOnAxes[triangleIndex], triangleBOnAxes[triangleIndex][0])
-      || pointInTriangle(triangleBOnAxes[triangleIndex], triangleAOnAxes[triangleIndex][0])) return TRUE;
-  } else {
-    float d[3];
-    float t1[2], t2[2];
-    float t1MinMax[2], t2MinMax[2];
-    cross(n1, n2, d);
-    calcLineParameters(a, d, dv1, t1);
-    calcLineParameters(b, d, dv2, t2);
-    if(t1[0] > t1[1]) {
-      t1MinMax[0] = t1[1];
-      t1MinMax[1] = t1[0];
-    } else {
-      t1MinMax[0] = t1[0];
-      t1MinMax[1] = t1[1];
-    }
-    if(t2[0] > t2[1]) {
-      t2MinMax[0] = t2[1];
-      t2MinMax[1] = t2[0];
-    } else {
-      t2MinMax[0] = t2[0];
-      t2MinMax[1] = t2[1];
-    }
-    if(!(t1MinMax[1] < t2MinMax[0] || t2MinMax[1] < t1MinMax[0])) {
-      return TRUE;
-    }
-  }
-  return FALSE;
 }
 
 float (*mulMat4ByTriangle(float mat[4][4], float triangle[3][3], float out[3][3]))[3] {
@@ -275,12 +214,12 @@ float (*mulMat4ByTriangle(float mat[4][4], float triangle[3][3], float out[3][3]
 
 Vector* getPolygons(Node node, Vector *polygons) {
 	size_t i1, i2;
-	resetIteration(&node.shape.indices);
-	for(i1 = 0;i1 < node.shape.indices.length / 3;i1++) {
+	resetIteration(&node.collisionShape.indices);
+	for(i1 = 0;i1 < node.collisionShape.indices.length / 3;i1++) {
     float *triangle = malloc(9 * sizeof(float));
     for(i2 = 0;i2 < 3;i2++) {
-			unsigned long index = *(unsigned long*)nextData(&node.shape.indices);
-      float *data = dataAt(&node.shape.vertices, index);
+			unsigned long index = *(unsigned long*)nextData(&node.collisionShape.indices);
+      float *data = dataAt(&node.collisionShape.vertices, index);
       triangle[i2 * 3] = data[0];
       triangle[i2 * 3 + 1] = data[1];
       triangle[i2 * 3 + 2] = data[2];
@@ -290,53 +229,79 @@ Vector* getPolygons(Node node, Vector *polygons) {
   return polygons;
 }
 
-int testCollisionPolygonPolygon(Node a, Node b, Vector *normals, Vector *points) {
-  unsigned long indexA = 0;
+CollisionInfoNode2Node initCollisionInfoNode2Node(Node *nodeA, Node *nodeB, float triangle[3][3], unsigned long normalIndex, unsigned long *uvIndex[3], float contacts[2][3], float depth) {
+  float tempVec3[2][3];
+  float tempVec4[2][4];
+  float tempMat3[2][3][3];
+  float tempMat4[1][4][4];
+  CollisionInfoNode2Node info;
+  memcpy_s(info.normal, SIZE_VEC3, dataAt(&nodeB->collisionShape.normals, normalIndex), SIZE_VEC3);
+  transposeMat3(inverse3(convMat4toMat3(nodeB->lastTransformation, tempMat3[0]), tempMat3[1]), tempMat3[0]);
+  mulMat3Vec3(tempMat3[0], info.normal, tempVec3[0]);
+  normalize3(tempVec3[0], info.normal);
+  convVec4toVec3(mulMat4Vec4(getWorldTransfomration(nodeA->parent, tempMat4[0]), convVec3toVec4(nodeA->position, tempVec4[0]), tempVec4[1]), tempVec3[0]);
+  subVec3(contacts[0], tempVec3[0], info.contacts[0]);
+  subVec3(contacts[1], tempVec3[0], info.contacts[1]);
+  cartesian3dToBarycentric(triangle, contacts[0], info.barycentric[0]);
+  cartesian3dToBarycentric(triangle, contacts[1], info.barycentric[1]);
+  info.depth = depth;
+  return info;
+}
+
+int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBOut) {
+  unsigned long *normalIndex[2];
+  unsigned long *uvIndex[2][3];
   Vector polygonsA = initVector();
   Vector polygonsB = initVector();
   float (*polygonA)[3], (*polygonB)[3];
   int collided = FALSE;
+  *infoAOut = initVector();
+  *infoBOut = initVector();
+  resetIteration(&a.collisionShape.normalIndices);
+  normalIndex[0] = nextData(&a.collisionShape.normalIndices);
+  resetIteration(&a.collisionShape.uvIndices);
+  uvIndex[0][0] = nextData(&a.collisionShape.uvIndices);
+  uvIndex[0][1] = nextData(&a.collisionShape.uvIndices);
+  uvIndex[0][2] = nextData(&a.collisionShape.uvIndices);
   getPolygons(a, &polygonsA);
   getPolygons(b, &polygonsB);
   polygonA = nextData(&polygonsA);
   while(polygonA) {
     unsigned long indexB = 0;
     float polygonAWorld[3][3];
+    resetIteration(&b.collisionShape.normalIndices);
+    normalIndex[1] = nextData(&b.collisionShape.normalIndices);
+    resetIteration(&b.collisionShape.uvIndices);
+    uvIndex[1][0] = nextData(&b.collisionShape.uvIndices);
+    uvIndex[1][1] = nextData(&b.collisionShape.uvIndices);
+    uvIndex[1][2] = nextData(&b.collisionShape.uvIndices);
     mulMat4ByTriangle(a.lastTransformation, polygonA, polygonAWorld);
     resetIteration(&polygonsB);
     polygonB = nextData(&polygonsB);
     while(polygonB) {
       float polygonBWorld[3][3];
+      float contacts[2][3];
+      float depths[2];
       mulMat4ByTriangle(b.lastTransformation, polygonB, polygonBWorld);
-      if(testCollisionTriangleTriangle(polygonAWorld, polygonBWorld)) {
-        float temp[2][3];
-        float tempMat3[2][3][3];
-        float (*normal)[3] = malloc(6 * sizeof(float));
-        float (*point)[3] = malloc(6 * sizeof(float));
-        unsigned long *normalIndex;
-        getTriangleCM3(polygonAWorld, temp[0]);
-        subVec3(temp[0], a.position, point[0]);
-        getTriangleCM3(polygonBWorld, temp[0]);
-        subVec3(temp[0], b.position, point[1]);
-        normalIndex = (unsigned long*)dataAt(&a.shape.normalIndices, indexA);
-        memcpy_s(temp, 3 * sizeof(float), dataAt(&a.shape.normals, *normalIndex), 3 * sizeof(float));
-        transposeMat3(inverse3(convMat4toMat3(a.lastTransformation, tempMat3[0]), tempMat3[1]), tempMat3[0]);
-        mulMat3Vec3(tempMat3[0], temp[0], temp[1]);
-        normalize3(temp[1], normal[0]);
-        normalIndex = (unsigned long*)dataAt(&b.shape.normalIndices, indexB);
-        memcpy_s(temp, 3 * sizeof(float), dataAt(&b.shape.normals, *normalIndex), 3 * sizeof(float));
-        transposeMat3(inverse3(convMat4toMat3(b.lastTransformation, tempMat3[0]), tempMat3[1]), tempMat3[0]);
-        mulMat3Vec3(tempMat3[0], temp[0], temp[1]);
-        normalize3(temp[1], normal[1]);
-        push(normals, normal);
-        push(points, point);
+      if(testCollisionTriangleTriangle(polygonAWorld, polygonBWorld, contacts, depths)) {
+        CollisionInfoNode2Node infoA, infoB;
+        infoA = initCollisionInfoNode2Node(&a, &b, polygonA, *normalIndex[1], uvIndex[1], contacts, depths[0]);
+        infoB = initCollisionInfoNode2Node(&b, &a, polygonB, *normalIndex[0], uvIndex[0], contacts, depths[1]);
+        pushAlloc(infoAOut, sizeof(CollisionInfoNode2Node), &infoA);
+        pushAlloc(infoBOut, sizeof(CollisionInfoNode2Node), &infoB);
         collided = TRUE;
       }
       polygonB = nextData(&polygonsB);
-      indexB += 1;
+      normalIndex[1] = nextData(&b.collisionShape.normalIndices);
+      uvIndex[1][0] = nextData(&b.collisionShape.uvIndices);
+      uvIndex[1][1] = nextData(&b.collisionShape.uvIndices);
+      uvIndex[1][2] = nextData(&b.collisionShape.uvIndices);
     }
     polygonA = nextData(&polygonsA);
-    indexA += 1;
+    normalIndex[0] = nextData(&a.collisionShape.normalIndices);
+    uvIndex[0][0] = nextData(&a.collisionShape.uvIndices);
+    uvIndex[0][1] = nextData(&a.collisionShape.uvIndices);
+    uvIndex[0][2] = nextData(&a.collisionShape.uvIndices);
   }
   freeVector(&polygonsA);
   freeVector(&polygonsB);
@@ -361,11 +326,10 @@ Shape initShape(float mass) {
   shape.uv = initVector();
   shape.uvIndices = initVector();
   shape.mass = mass;
-  shape.restitution = 0.0F;
   return shape;
 }
 
-Shape initShapePlane(float width, float height, unsigned char color) {
+Shape initShapePlane(float width, float height, unsigned char color, float mass) {
   int i;
   float halfWidth = width / 2.0F;
   float halfHeight = height / 2.0F;
@@ -376,15 +340,16 @@ Shape initShapePlane(float width, float height, unsigned char color) {
     0, 1,
   };
   static float generated_normals[][3] = {
-    { 0.0F, 0.0F, -1.0F }, { 0.0F, 0.0F, -1.0F },
+    { 0.0F, 1.0F, 0.0F }, { 0.0F, 1.0F, 0.0F },
   };
   static float generated_uv[][2] = {
     { 1.0F, 1.0F }, { 0.0F, 1.0F }, { 1.0F, 0.0F }, { 0.0F, 0.0F },
   };
-  generated_vertices[0] = initVertex(-halfWidth, -halfHeight, 0.0F, color);
-  generated_vertices[1] = initVertex(halfWidth, -halfHeight, 0.0F, color);
-  generated_vertices[2] = initVertex(-halfWidth, halfHeight, 0.0F, color);
-  generated_vertices[3] = initVertex(halfWidth, halfHeight, 0.0F, color);
+  shape.mass = mass;
+  generated_vertices[0] = initVertex(-halfWidth, 0.0F, -halfHeight, color);
+  generated_vertices[1] = initVertex(halfWidth, 0.0F, -halfHeight, color);
+  generated_vertices[2] = initVertex(-halfWidth, 0.0F, halfHeight, color);
+  generated_vertices[3] = initVertex(halfWidth, 0.0F, halfHeight, color);
   for(i = 0;i < 6;i++) {
     unsigned long *index = malloc(sizeof(unsigned long));
     unsigned long *uvIndex = malloc(sizeof(unsigned long));
@@ -465,7 +430,7 @@ Shape initShapePlaneInv(float width, float height, unsigned char color) {
   return shape;
 }
 
-Shape initShapeBox(float width, float height, float depth, unsigned char color) {
+Shape initShapeBox(float width, float height, float depth, unsigned char color, float mass) {
   int i;
   float halfWidth = width / 2.0F;
   float halfHeight = height / 2.0F;
@@ -496,6 +461,7 @@ Shape initShapeBox(float width, float height, float depth, unsigned char color) 
     { 0.0F, 0.0F }, { 0.0F, 1.0F }, { 1.0F, 0.0F }, { 1.0F, 1.0F },
     { 0.0F, 0.0F }, { 1.0F, 0.0F }, { 0.0F, 1.0F }, { 1.0F, 1.0F },
   };
+  shape.mass = mass;
   generated_vertices[0] = initVertex(-halfWidth, -halfHeight, halfDepth, color);
   generated_vertices[1] = initVertex(-halfWidth, halfHeight, halfDepth, color);
   generated_vertices[2] = initVertex(halfWidth, -halfHeight, halfDepth, color);
@@ -587,14 +553,14 @@ static size_t getUntil(char *string, char *separators, size_t index, char *out, 
   return index + 1;
 }
 
-int initShapeFromObj(Shape *shape, char *filename) {
+int initShapeFromObj(Shape *shape, char *filename, float mass) {
   FILE *file;
   char buffer[OBJ_LINE_BUFFER_SIZE];
   char temp[OBJ_WORD_BUFFER_SIZE];
   size_t line = 1;
   float aabb[3][2];
   BOOL aabbCleared = FALSE;
-  *shape = initShape(1.0F);
+  *shape = initShape(mass);
   if(fopen_s(&file, filename, "r")) {
     fputs("File not found.", stderr);
     fclose(file);
@@ -771,6 +737,32 @@ int initShapeFromObj(Shape *shape, char *filename) {
   inverse3(shape->inertia, shape->inverseInertia);
   fclose(file);
   return 0;
+}
+
+float (*getShapeAABB(Shape shape, float transformation[4][4], float out[3][2]))[2] {
+  Vertex *vertex;
+  int first = TRUE;
+  iterf(&shape.vertices, &vertex) {
+    float transformed[4];
+    mulMat4Vec4(transformation, vertex->components, transformed);
+    if(first) {
+      out[0][0] = transformed[0];
+      out[0][1] = transformed[0];
+      out[1][0] = transformed[1];
+      out[1][1] = transformed[1];
+      out[2][0] = transformed[2];
+      out[2][1] = transformed[2];
+      first = FALSE;
+    } else {
+      out[0][0] = min(out[0][0], transformed[0]);
+      out[0][1] = max(out[0][1], transformed[0]);
+      out[1][0] = min(out[1][0], transformed[1]);
+      out[1][1] = max(out[1][1], transformed[1]);
+      out[2][0] = min(out[2][0], transformed[2]);
+      out[2][1] = max(out[2][1], transformed[2]);
+    }
+  }
+  return out;
 }
 
 void discardShape(Shape shape) {

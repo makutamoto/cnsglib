@@ -11,6 +11,7 @@ typedef unsigned int uint32_t;
 
 #define atanf(x) (float)atan(x)
 #define ceilf(x) (float)ceil(x)
+#define fabsf(x) (float)fabs(x)
 #define floorf(x) (float)floor(x)
 #define cosf(x) (float)cos(x)
 #define sinf(x) (float)sin(x)
@@ -22,6 +23,7 @@ int fopen_s(FILE** pFile, const char *filename, const char *mode);
 #define fread_s(buffer, bufferSize, elementSize, count, stream) fread(buffer, elementSize, count, stream)
 
 #define memcpy_s(dest, destSize, src, count) memcpy(dest, src, count)
+#define strcat_s(dest, size, src) strcat(dest, src)
 
 #endif
 #endif

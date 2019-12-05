@@ -8,6 +8,7 @@
 #include "../include/vector.h"
 
 typedef struct {
+  int positionMask[3];
   float position[3];
   float target[3];
   float worldUp[3];
@@ -16,15 +17,23 @@ typedef struct {
   float farLimit;
   float aspect;
   Node *parent;
+  int isRotationDisabled;
 } Camera;
 
-typedef struct {
+typedef struct _Scene {
   float acceleration[3];
   Vector nodes;
   unsigned char background;
   Camera camera;
   Vector intervalEvents;
+  float clock;
+  void (*behaviour)(struct _Scene*, float);
 } Scene;
+
+typedef struct {
+  Node *target;
+  Vector info;
+} CollisionInfo;
 
 typedef struct {
 	clock_t begin;
@@ -36,7 +45,8 @@ Camera initCamera(float x, float y, float z, float aspect);
 
 Scene initScene(void);
 void addIntervalEventScene(Scene *scene, unsigned int milliseconds, void (*callback)(Scene*));
-void drawScene(Scene *scene);
+void drawSceneWithCamera(Scene *scene, Image *output, Camera *camera);
+void drawScene(Scene *scene, Image *output);
 void updateScene(Scene *scene, float elapsed);
 void discardScene(Scene *scene);
 
