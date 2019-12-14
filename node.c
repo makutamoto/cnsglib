@@ -267,7 +267,6 @@ int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBO
   getPolygons(b, &polygonsB);
   polygonA = nextData(&polygonsA);
   while(polygonA) {
-    unsigned long indexB = 0;
     float polygonAWorld[3][3];
     resetIteration(&b.collisionShape.normalIndices);
     normalIndex[1] = nextData(&b.collisionShape.normalIndices);

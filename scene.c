@@ -89,6 +89,7 @@ void drawSceneWithCamera(Scene *scene, Image *output, Camera *camera) {
     setCameraMat4(cameraMatrix);
     drawNode(node, zBuffer, output);
   }
+  free(zBuffer);
 }
 
 void drawScene(Scene *scene, Image *output) {
