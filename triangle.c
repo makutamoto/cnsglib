@@ -103,6 +103,7 @@ int testCollisionTriangleTriangle(const float a[3][3], const float b[3][3], floa
   float *v1MinMax[2], *v2MinMax[2];
   float t1MinMax[2], t2MinMax[2];
   if(calcPlaneEquation(b, a, n2, &d2, dv2) || calcPlaneEquation(a, b, n1, &d1, dv1)) return FALSE;
+  if(dv2[0] == 0.0F && dv2[1] == 0.0F && dv2[2] == 0.0F) return FALSE;
   cross(n1, n2, tempVec3[0]);
   normalize3(tempVec3[0], d);
   depths[0] = calcLineParameters(a, d, dv2, t1, v1);
