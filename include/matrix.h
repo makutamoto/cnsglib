@@ -27,6 +27,7 @@ float (*convMat4toMat3(float in[4][4], float out[3][3]))[3];
 float* initVec3(float vec[3], int mask);
 float* setVec3(float vec[3], float val, int mask);
 int equalVec3(float a[3], float b[3]);
+int maxAbsIndex3(float vector[3]);
 float cosVec3(float a[3], float b[3]);
 float *clearVec3(float in[3]);
 

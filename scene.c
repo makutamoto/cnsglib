@@ -89,6 +89,7 @@ void drawSceneWithCamera(Scene *scene, Image *output, Camera *camera) {
     setCameraMat4(cameraMatrix);
     drawNode(node, zBuffer, output);
   }
+  free(zBuffer);
 }
 
 void drawScene(Scene *scene, Image *output) {
@@ -247,6 +248,8 @@ void updateScene(Scene *scene, float elapsed) {
   }
   for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) {
     IntervalEventNode *interval;
+    clearVec3(node->force);
+    clearVec3(node->torque);
     if(node->behaviour != NULL) {
       if(!node->behaviour(node)) {
         node = previousData(&scene->nodes);

@@ -33,6 +33,7 @@ void resetIteration(Vector *vector) {
 	vector->currentItem = NULL;
 }
 
+// pointer?
 void* nextData(Vector *vector) {
 	if(vector->currentItem == NULL) {
 		if(vector->firstItem == NULL) {

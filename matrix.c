@@ -50,6 +50,26 @@ int equalVec3(float a[3], float b[3]) {
 	return FALSE;
 }
 
+int maxAbsIndex3(float vector[3]) {
+	float abses[3];
+	abses[0] = fabsf(vector[0]);
+	abses[1] = fabsf(vector[1]);
+	abses[2] = fabsf(vector[2]);
+	if(abses[0] >= abses[1]) {
+		if(abses[0] >= abses[2]) {
+			return 0;
+		} else {
+			return 2;
+		}
+	} else {
+		if(abses[1] >= abses[2]) {
+			return 1;
+		} else {
+			return 2;
+		}
+	}
+}
+
 float cosVec3(float a[3], float b[3]) {
 	return dot3(a, b) / (length3(a) * length3(b));
 }
