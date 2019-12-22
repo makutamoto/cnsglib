@@ -12,6 +12,7 @@ typedef struct _Vertex {
 } Vertex;
 
 void initScreen(short width, short height);
+void setDivideByZ(int value);
 void setZNear(float value);
 float *initZBuffer(unsigned int width, unsigned int height);
 void flushBuffer(Image *image);

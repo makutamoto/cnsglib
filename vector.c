@@ -263,24 +263,38 @@ void freeVector(Vector *vector) {
 VectorIter initVectorIter(Vector *vector) {
 	VectorIter iter;
 	iter.vector = vector;
-	iter.currentItem = NULL;
+	iter.isNull = TRUE;
 	return iter;
 }
 
 void* nextDataIter(VectorIter *iter) {
-	if(iter->currentItem == NULL) {
-		iter->currentItem = iter->vector->firstItem;
+	if(iter->isNull) {
+		if(iter->vector->firstItem) {
+			iter->currentItem = *iter->vector->firstItem;
+			iter->isNull = FALSE;
+		}
 	} else {
-		iter->currentItem = iter->currentItem->nextItem;
+		if(iter->currentItem.nextItem) {
+			iter->currentItem = *iter->currentItem.nextItem;
+		} else {
+			iter->isNull = TRUE;
+		}
 	}
-	return (iter->currentItem == NULL) ? NULL : iter->currentItem->data;
+	return iter->isNull ? NULL : iter->currentItem.data;
 }
 
 void* previousDataIter(VectorIter *iter) {
-	if(iter->currentItem == NULL) {
-		iter->currentItem = iter->vector->lastItem;
+	if(iter->isNull) {
+		if(iter->vector->lastItem) {
+			iter->currentItem = *iter->vector->lastItem;
+			iter->isNull = FALSE;
+		}
 	} else {
-		iter->currentItem = iter->currentItem->previousItem;
+		if(iter->currentItem.previousItem) {
+			iter->currentItem = *iter->currentItem.previousItem;
+		} else {
+			iter->isNull = TRUE;
+		}
 	}
-	return (iter->currentItem == NULL) ? NULL : iter->currentItem->data;
+	return (iter->isNull) ? NULL : iter->currentItem.data;
 }

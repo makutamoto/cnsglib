@@ -36,6 +36,16 @@ Node initNodeUI(const char *id, Image image, unsigned char color) {
   return node;
 }
 
+Node initNodeSprite(const char *id, float width, float height, Image texture, Image collisionTexture) {
+  Node node;
+  node = initNode(id, texture);
+  node.collisionTexture = collisionTexture;
+  node.shape = initShapePlaneV(width, height, MAGENTA);
+  node.collisionShape = node.shape;
+  node.physicsMode = PHYSICS_2D;
+  return node;
+}
+
 Node initNodeText(const char *id, float px, float py, Align alignX, Align alignY, unsigned int sx, unsigned int sy, int (*behaviour)(Node*)) {
   Node node;
   node = initNodeUI(id, initImage(sx, sy, BLACK, BLACK), NULL_COLOR);
@@ -88,7 +98,7 @@ void discardNode(Node node) {
   clearVector(&node.children);
 }
 
-void drawNode(Node *node, float zBuffer[], Image *output) {
+void drawNode(Node *node, float zBuffer[], Node *replacedNode, Image *output) {
   Node *child;
   unsigned int halfWidth, halfHeight;
   halfWidth = output->width / 2;
@@ -125,7 +135,7 @@ void drawNode(Node *node, float zBuffer[], Image *output) {
         y = output->height - node->position[1] - halfScale[1];
         break;
     }
-    translateTransformation(x / halfWidth - 1.0F, y / halfHeight - 1.0F, 0.0F);
+    translateTransformation(x / halfWidth - 1.0F, y / halfHeight - 1.0F, node->position[2] > 0 ? 1.0F + node->position[2] : 1.0F);
   } else {
     translateTransformation(node->position[0], node->position[1], node->position[2]);
   }
@@ -133,23 +143,30 @@ void drawNode(Node *node, float zBuffer[], Image *output) {
   pushTransformation();
   if(node->isInterface) {
     clearCameraMat4();
+    setDivideByZ(FALSE);
     scaleTransformation(node->scale[0] / halfWidth, node->scale[1] / halfHeight, 1.0F);
   } else {
     scaleTransformation(node->scale[0], node->scale[1], node->scale[2]);
   }
   getTransformation(node->lastTransformation);
-  if(node->isVisible) {
-    clearAABB();
-    fillPolygons(node->shape.vertices, node->shape.indices, node->texture, node->shape.uv, node->shape.uvIndices, zBuffer, output);
-    getAABB(node->aabb);
+  if(replacedNode) {
+    if(node == replacedNode) {
+      fillPolygons(node->shape.vertices, node->shape.indices, node->collisionTexture, node->shape.uv, node->shape.uvIndices, zBuffer, output);
+    }
   } else {
-    getShapeAABB(node->shape, node->lastTransformation, node->aabb);
+    if(node->isVisible) {
+      clearAABB();
+      fillPolygons(node->shape.vertices, node->shape.indices, node->texture, node->shape.uv, node->shape.uvIndices, zBuffer, output);
+      getAABB(node->aabb);
+    } else {
+      getShapeAABB(node->shape, node->lastTransformation, node->aabb);
+    }
   }
   popTransformation();
   resetIteration(&node->children);
   child = previousData(&node->children);
   while(child) {
-    drawNode(child, zBuffer, output);
+    drawNode(child, zBuffer, replacedNode, output);
     child = previousData(&node->children);
   }
   popTransformation();
@@ -349,6 +366,56 @@ Shape initShapePlane(float width, float height, unsigned char color, float mass)
   generated_vertices[1] = initVertex(halfWidth, 0.0F, -halfHeight, color);
   generated_vertices[2] = initVertex(-halfWidth, 0.0F, halfHeight, color);
   generated_vertices[3] = initVertex(halfWidth, 0.0F, halfHeight, color);
+  for(i = 0;i < 6;i++) {
+    unsigned long *index = malloc(sizeof(unsigned long));
+    unsigned long *uvIndex = malloc(sizeof(unsigned long));
+    *index = generated_indices[i];
+    *uvIndex = generated_indices[i];
+    push(&shape.indices, index);
+    push(&shape.uvIndices, uvIndex);
+  }
+  for(i = 0;i < 4;i++) {
+    Vertex *vertex = malloc(sizeof(Vertex));
+    float *coords = malloc(2 * sizeof(float));
+    *vertex = generated_vertices[i];
+    coords[0] = generated_uv[i][0];
+    coords[1] = generated_uv[i][1];
+    push(&shape.vertices, vertex);
+    push(&shape.uv, coords);
+  }
+  for(i = 0;i < 2;i++) {
+    float *normal = malloc(3 * sizeof(float));
+    unsigned long *normalIndex = (unsigned long*)malloc(sizeof(unsigned long));
+    memcpy_s(normal, 3 * sizeof(float), generated_normals[i], 3 * sizeof(float));
+    *normalIndex = generated_normalIndices[i];
+    push(&shape.normals, normal);
+    push(&shape.normalIndices, normalIndex);
+  }
+  genInertiaTensorBox(100.0F * shape.mass, width, height, 0.0F, shape.inertia);
+  inverse3(shape.inertia, shape.inverseInertia);
+  return shape;
+}
+
+Shape initShapePlaneV(float width, float height, unsigned char color) {
+  int i;
+  float halfWidth = width / 2.0F;
+  float halfHeight = height / 2.0F;
+  Shape shape = initShape(1.0F);
+  static unsigned long generated_indices[] = { 0, 2, 1, 3, 1, 2 };
+  Vertex generated_vertices[4];
+  static unsigned long generated_normalIndices[] = {
+    0, 1,
+  };
+  static float generated_normals[][3] = {
+    { 0.0F, 0.0F, -1.0F }, { 0.0F, 0.0F, -1.0F },
+  };
+  static float generated_uv[][2] = {
+    { 0.0F, 1.0F }, { 0.0F, 0.0F }, { 1.0F, 1.0F }, { 1.0F, 0.0F },
+  };
+  generated_vertices[0] = initVertex(-halfWidth, -halfHeight, 0.0F, color);
+  generated_vertices[1] = initVertex(-halfWidth, halfHeight, 0.0F, color);
+  generated_vertices[2] = initVertex(halfWidth, -halfHeight, 0.0F, color);
+  generated_vertices[3] = initVertex(halfWidth, halfHeight, 0.0F, color);
   for(i = 0;i < 6;i++) {
     unsigned long *index = malloc(sizeof(unsigned long));
     unsigned long *uvIndex = malloc(sizeof(unsigned long));

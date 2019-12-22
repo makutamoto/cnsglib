@@ -15,6 +15,7 @@
 
 static HANDLE screen;
 
+static int divideByZ = TRUE;
 static float zNearOver;
 static float camera[4][4];
 static float transformation[4][4];
@@ -27,9 +28,12 @@ static float aabbTemp[3][2];
 void initScreen(short width, short height) {
 	CONSOLE_CURSOR_INFO info = { 1, FALSE };
 	COORD bufferSize;
+	char buffer[32];
 	#ifndef __BORLANDC__
 	CONSOLE_FONT_INFOEX font = { sizeof(CONSOLE_FONT_INFOEX) };
 	#endif
+	sprintf(buffer, "mode %d, %d", 2 * width, height);
+	system(buffer);
 	screen = CreateConsoleScreenBuffer(GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
 	SetConsoleActiveScreenBuffer(screen);
 	#ifndef __BORLANDC__
@@ -44,6 +48,10 @@ void initScreen(short width, short height) {
 	SetConsoleScreenBufferSize(screen, bufferSize);
 	SetConsoleCursorInfo(screen, &info);
 	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+}
+
+void setDivideByZ(int value) {
+	divideByZ = value;
 }
 
 void setZNear(float value) {
@@ -122,6 +130,10 @@ void setCameraMat4(float mat[4][4]) {
 
 void clearCameraMat4(void) {
 	genIdentityMat4(camera);
+	camera[2][2] = 0.0F;
+	camera[2][3] = 1.0F;
+	camera[3][2] = -1.0F;
+	camera[3][3] = 0.0F;
 }
 
 void translateTransformation(float dx, float dy, float dz) {
@@ -174,8 +186,10 @@ static void projectTriangle(float points[3][4], Image image, const float uv[3][2
 	halfHeight = output->height / 2;
 	for(i = 0;i < 3;i++) {
 		COPY_ARY(transformed[i], points[i]);
-		transformed[i][0] *= transformed[i][3];
-		transformed[i][1] *= transformed[i][3];
+		if(divideByZ) {
+			transformed[i][0] *= transformed[i][3];
+			transformed[i][1] *= transformed[i][3];
+		}
 		transformed[i][2] *= transformed[i][3];
 		if(transformed[i][2] > 1.0F) tooFar += 1;
 		transformed[i][2] *= transformed[i][3];

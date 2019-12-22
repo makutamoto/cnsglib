@@ -10,6 +10,10 @@ typedef enum {
 	LEFT, CENTER, RIGHT, TOP, BOTTOM
 } Align;
 
+typedef enum {
+	PHYSICS_NONE, PHYSICS_2D, PHYSICS_3D
+} PhysicsMode;
+
 typedef struct {
 	Vector indices;
 	Vector vertices;
@@ -34,12 +38,14 @@ typedef struct _Node {
 	float angMomentum[3];
 	float force[3];
 	float torque[3];
+	float previousPosition[3];
 	float position[3];
 	float angle[3];
 	float scale[3];
 	float lastTransformation[4][4];
 	float aabb[3][2];
 	Image texture;
+	Image collisionTexture;
 	Shape shape;
 	Shape collisionShape;
 	unsigned int collisionFlags;
@@ -50,7 +56,7 @@ typedef struct _Node {
 	struct _Node *parent;
 	Vector children;
 	int (*behaviour)(struct _Node*);
-	int isPhysicsEnabled;
+	PhysicsMode physicsMode;
 	int isInterface;
 	Align interfaceAlign[2];
 	int isVisible;
@@ -79,13 +85,14 @@ typedef struct {
 
 Node initNode(const char *id, Image image);
 Node initNodeUI(const char *id, Image image, unsigned char color);
+Node initNodeSprite(const char *id, float width, float height, Image texture, Image collisionTexture);
 Node initNodeText(const char *id, float px, float py, Align alignX, Align alignY, unsigned int sx, unsigned int sy, int (*behaviour)(Node*));
 NodeIter initNodeIter(Vector *layer);
 Node* nextNode(NodeIter *iter);
 void addNodeChild(Node *parent, Node *child);
 void discardNode(Node node);
 
-void drawNode(Node *node, float zBuffer[], Image *output);
+void drawNode(Node *node, float zBuffer[], Node *replacedNode, Image *output);
 void applyForce(Node *node, float force[3], int mask, int rotation);
 float (*getNodeTransformation(Node node, float out[4][4]))[4];
 float (*getWorldTransfomration(Node *node, float out[4][4]))[4];
@@ -97,6 +104,7 @@ void addIntervalEventNode(Node *node, unsigned int milliseconds, void (*callback
 
 Shape initShape(float mass);
 Shape initShapePlane(float width, float height, unsigned char color, float mass);
+Shape initShapePlaneV(float width, float height, unsigned char color);
 Shape initShapePlaneInv(float width, float height, unsigned char color);
 Shape initShapeBox(float width, float height, float depth, unsigned char color, float mass);
 int initShapeFromObj(Shape *shape, char *filename, float mass);

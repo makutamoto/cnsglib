@@ -18,10 +18,13 @@ typedef struct _VectorItem {
 
 typedef struct {
 	Vector *vector;
-	VectorItem *currentItem;
+	int isNull;
+	VectorItem currentItem;
 } VectorIter;
 
 #define iterf(vector, data) for(resetIteration((vector));nextIter((vector), (void**)(data));)
+
+#define pushStr(vector, str) pushAlloc((vector), sizeof((str)), (str))
 
 Vector initVector(void);
 void concatVectorAlloc(Vector *dest, Vector *src, size_t size);
