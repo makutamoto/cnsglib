@@ -55,7 +55,7 @@ typedef struct _Node {
 	Vector intervalEvents;
 	struct _Node *parent;
 	Vector children;
-	int (*behaviour)(struct _Node*);
+	int (*behaviour)(struct _Node*, float);
 	PhysicsMode physicsMode;
 	int isInterface;
 	Align interfaceAlign[2];
@@ -86,13 +86,13 @@ typedef struct {
 Node initNode(const char *id, Image image);
 Node initNodeUI(const char *id, Image image, unsigned char color);
 Node initNodeSprite(const char *id, float width, float height, Image texture, Image collisionTexture);
-Node initNodeText(const char *id, float px, float py, Align alignX, Align alignY, unsigned int sx, unsigned int sy, int (*behaviour)(Node*));
+Node initNodeText(const char *id, float px, float py, Align alignX, Align alignY, unsigned int sx, unsigned int sy, int (*behaviour)(Node*, float));
 NodeIter initNodeIter(Vector *layer);
 Node* nextNode(NodeIter *iter);
 void addNodeChild(Node *parent, Node *child);
 void discardNode(Node node);
 
-void drawNode(Node *node, float zBuffer[], Node *replacedNode, Image *output);
+void drawNode(Node *node, float zBuffer[], Node *replacedNode, unsigned char filter, Image *output);
 void applyForce(Node *node, float force[3], int mask, int rotation);
 float (*getNodeTransformation(Node node, float out[4][4]))[4];
 float (*getWorldTransfomration(Node *node, float out[4][4]))[4];

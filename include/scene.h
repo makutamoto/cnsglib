@@ -24,6 +24,7 @@ typedef struct _Scene {
   float acceleration[3];
   Vector nodes;
   unsigned char background;
+  unsigned char sceneFilter;
   Camera camera;
   Vector intervalEvents;
   float clock;

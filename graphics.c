@@ -21,6 +21,7 @@ static float camera[4][4];
 static float transformation[4][4];
 static Vector matrixStore;
 static unsigned int currentStore = 0;
+static unsigned char colorFilter = 0x0F;
 
 int aabbClear = TRUE;
 static float aabbTemp[3][2];
@@ -56,6 +57,10 @@ void setDivideByZ(int value) {
 
 void setZNear(float value) {
 	zNearOver = 1.0F / value;
+}
+
+void setColorFilter(unsigned char filter) {
+	colorFilter = filter;
 }
 
 float *initZBuffer(unsigned int width, unsigned int height) {
@@ -243,7 +248,7 @@ static void projectTriangle(float points[3][4], Image image, const float uv[3][2
 						dataCoords[1] =	depth * (textures[0][1] * weights[0] + textures[1][1] * weights[1] + textures[2][1] * weights[2]);
 						color = image.data[image.width * min((unsigned int)(floorf(image.height * dataCoords[1])), image.height - 1) + min((unsigned int)(floorf(image.width * dataCoords[0])), image.width - 1)];
 						if(color != image.transparent) {
-							output->data[index] = color;
+							output->data[index] = color & colorFilter;
 							zBuffer[index] = depth;
 						}
 					}

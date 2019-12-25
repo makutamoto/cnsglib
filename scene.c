@@ -34,6 +34,7 @@ Scene initScene(void) {
   scene.acceleration[1] = -98.0F;
   scene.nodes = initVector();
   scene.camera = initCamera(0.0F, 0.0F, 0.0F, 0.0F);
+  scene.sceneFilter = 0x0F;
   return scene;
 }
 
@@ -89,7 +90,7 @@ void drawSceneEx(Scene *scene, Image *output, Camera *camera, Node *replacedNode
   iterf(&scene->nodes, &node) {
     setCameraMat4(cameraMatrix);
     setDivideByZ(TRUE);
-    drawNode(node, zBuffer, replacedNode, output);
+    drawNode(node, zBuffer, replacedNode, scene->sceneFilter, output);
   }
   free(zBuffer);
 }
@@ -185,6 +186,7 @@ int is2dCollided(Scene *scene, Node *node, Node *collisionTarget) {
   tempScene = *scene;
   tempScene.camera.aspect = 0.0F;
   tempScene.background = WHITE;
+  tempScene.sceneFilter = 0x0F;
   drawSceneEx(&tempScene, &nodeImage, &tempScene.camera, node);
   drawSceneEx(&tempScene, &targetImage, &tempScene.camera, collisionTarget);
   if(isImageOverlap(&nodeImage, &targetImage)) return TRUE;
@@ -289,7 +291,7 @@ void updateScene(Scene *scene, float elapsed) {
     clearVec3(node->force);
     clearVec3(node->torque);
     if(node->behaviour != NULL) {
-      if(!node->behaviour(node)) continue;
+      if(!node->behaviour(node, elapsed)) continue;
     }
     resetIteration(&node->intervalEvents);
     interval = nextData(&node->intervalEvents);

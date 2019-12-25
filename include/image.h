@@ -5,6 +5,7 @@ typedef struct {
 	unsigned int width;
 	unsigned int height;
 	unsigned char transparent;
+	unsigned char transparentFilter;
 	unsigned char *data;
 } Image;
 

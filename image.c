@@ -21,6 +21,7 @@ Image initImage(unsigned int width, unsigned int height, unsigned char color, un
 	image.width = width;
 	image.height = height;
 	image.transparent = transparent;
+  image.transparentFilter = 0x0F;
 	image.data = malloc(imageSize);
 	memset(image.data, color, imageSize);
 	return image;
@@ -32,6 +33,7 @@ Image initImageBulk(unsigned int width, unsigned int height, unsigned char trans
 	image.width = width;
 	image.height = height;
 	image.transparent = transparent;
+  image.transparentFilter = 0x0F;
 	image.data = malloc(imageSize);
 	return image;
 }
@@ -70,6 +72,7 @@ void cropImage(Image *dest, Image *src, unsigned int xth, unsigned int yth) {
 	unsigned int x = dest->width * xth;
 	unsigned int y = dest->height * yth;
   dest->transparent = src->transparent;
+  dest->transparentFilter = src->transparentFilter;
 	if(dest->width > src->width || dest->height > src->height) {
 		fprintf(stderr, "cropImage: the cropped size is bigger than original size.\n");
 	}
@@ -89,7 +92,12 @@ void pasteImage(Image dest, Image src, int x, int y) {
 		for(ix = 0;ix < (long)src.width && ix + x < (long)dest.width;ix++) {
       size_t srcIndex = src.width * iy + ix;
       if(iy + y >= 0 && ix + x >= 0) {
-        if(src.data[srcIndex] != src.transparent) dest.data[dest.width * (iy + y) + ix + x] = src.data[srcIndex];
+        size_t destIndex = dest.width * (iy + y) + ix + x;
+        if(src.data[srcIndex] == src.transparent) {
+          dest.data[destIndex] &= src.transparentFilter;
+        } else {
+          dest.data[destIndex] = src.data[srcIndex];
+        }
       }
 		}
 	}
@@ -101,6 +109,7 @@ void copyImage(Image *dest, Image *src) {
   dest->width = src->width;
   dest->height = src->height;
   dest->transparent = src->transparent;
+  dest->transparentFilter = src->transparentFilter;
   dest->data = malloc(size);
   memcpy_s(dest->data, size, src->data, size);
 }
@@ -165,7 +174,7 @@ void drawTextSJIS(Image target, FontSJIS font, unsigned int x, unsigned int y, c
 }
 
 Image loadBitmap(char *fileName, unsigned char transparent) {
-	Image image = { 0, 0, NULL_COLOR, NULL };
+	Image image = { 0, 0, NULL_COLOR, 0, NULL };
 	FILE *file;
 	BitmapHeader header;
 	BitmapInfoHeader infoHeader;
@@ -220,6 +229,7 @@ Image loadBitmap(char *fileName, unsigned char transparent) {
 	image.width = (unsigned int)infoHeader.width;
 	image.height = (unsigned int)infoHeader.height;
 	image.transparent = transparent;
+  image.transparentFilter = 0x0F;
 	image.data = (unsigned char*)malloc(image.width * image.height);
 	for(y = 0;y < image.height;y++) {
 		unsigned int x;
@@ -256,12 +266,14 @@ Image genCircle(unsigned int radius, unsigned char color) {
 		image.width = 0;
 		image.height = 0;
 		image.transparent = NULL_COLOR;
+    image.transparentFilter = 0x0F;
 		image.data = NULL;
 		return image;
 	}
 	image.width = edgeWidth;
 	image.height = edgeWidth;
 	image.transparent = color ^ 0x0F;
+  image.transparentFilter = 0x0F;
 	for(y = 0;y < edgeWidth;y++) {
 		unsigned int x;
 		for(x = 0;x < edgeWidth;x++) {

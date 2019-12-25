@@ -46,7 +46,7 @@ Node initNodeSprite(const char *id, float width, float height, Image texture, Im
   return node;
 }
 
-Node initNodeText(const char *id, float px, float py, Align alignX, Align alignY, unsigned int sx, unsigned int sy, int (*behaviour)(Node*)) {
+Node initNodeText(const char *id, float px, float py, Align alignX, Align alignY, unsigned int sx, unsigned int sy, int (*behaviour)(Node*, float)) {
   Node node;
   node = initNodeUI(id, initImage(sx, sy, BLACK, BLACK), NULL_COLOR);
   node.position[0] = px;
@@ -98,7 +98,7 @@ void discardNode(Node node) {
   clearVector(&node.children);
 }
 
-void drawNode(Node *node, float zBuffer[], Node *replacedNode, Image *output) {
+void drawNode(Node *node, float zBuffer[], Node *replacedNode, unsigned char filter, Image *output) {
   Node *child;
   unsigned int halfWidth, halfHeight;
   halfWidth = output->width / 2;
@@ -144,8 +144,10 @@ void drawNode(Node *node, float zBuffer[], Node *replacedNode, Image *output) {
   if(node->isInterface) {
     clearCameraMat4();
     setDivideByZ(FALSE);
+    setColorFilter(0x0F);
     scaleTransformation(node->scale[0] / halfWidth, node->scale[1] / halfHeight, 1.0F);
   } else {
+    setColorFilter(filter);
     scaleTransformation(node->scale[0], node->scale[1], node->scale[2]);
   }
   getTransformation(node->lastTransformation);
@@ -166,7 +168,7 @@ void drawNode(Node *node, float zBuffer[], Node *replacedNode, Image *output) {
   resetIteration(&node->children);
   child = previousData(&node->children);
   while(child) {
-    drawNode(child, zBuffer, replacedNode, output);
+    drawNode(child, zBuffer, replacedNode, filter, output);
     child = previousData(&node->children);
   }
   popTransformation();
