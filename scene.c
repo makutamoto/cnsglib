@@ -34,7 +34,7 @@ Scene initScene(void) {
   scene.acceleration[1] = -98.0F;
   scene.nodes = initVector();
   scene.camera = initCamera(0.0F, 0.0F, 0.0F, 0.0F);
-  scene.sceneFilter = 0x0F;
+  scene.sceneFilterAND = 0x0F;
   return scene;
 }
 
@@ -90,7 +90,7 @@ void drawSceneEx(Scene *scene, Image *output, Camera *camera, Node *replacedNode
   iterf(&scene->nodes, &node) {
     setCameraMat4(cameraMatrix);
     setDivideByZ(TRUE);
-    drawNode(node, zBuffer, replacedNode, scene->sceneFilter, output);
+    drawNode(node, zBuffer, replacedNode, scene->sceneFilterAND, scene->sceneFilterOR, output);
   }
   free(zBuffer);
 }
@@ -181,12 +181,27 @@ static void collideNodes(Node *nodeA, Node *nodeB, Vector *info, float staticFri
 int is2dCollided(Scene *scene, Node *node, Node *collisionTarget) {
   Scene tempScene;
   Image nodeImage, targetImage;
+  Node *mainNode;
   nodeImage = initImageBulk(128, 128, NULL_COLOR);
   targetImage = initImageBulk(128, 128, NULL_COLOR);
   tempScene = *scene;
   tempScene.camera.aspect = 0.0F;
+  tempScene.camera.parent = NULL;
   tempScene.background = WHITE;
-  tempScene.sceneFilter = 0x0F;
+  tempScene.sceneFilterAND = 0x0F;
+  tempScene.sceneFilterOR = 0x00;
+  mainNode = (node->aabb[0][1] > collisionTarget->aabb[0][1] && node->aabb[0][0] < collisionTarget->aabb[0][0]) ? collisionTarget : node;
+  if(mainNode->parent) {
+    float tempVec4[2][4];
+    mulMat4Vec4(mainNode->lastTransformation, convVec3toVec4(mainNode->position, tempVec4[0]), tempVec4[1]);
+    tempScene.camera.position[0] = tempVec4[1][0];
+    tempScene.camera.position[1] = tempVec4[1][1];
+  } else {
+    tempScene.camera.position[0] = mainNode->position[0];
+    tempScene.camera.position[1] = mainNode->position[1];
+  }
+  tempScene.camera.target[0] = tempScene.camera.position[0];
+  tempScene.camera.target[1] = tempScene.camera.position[1];
   drawSceneEx(&tempScene, &nodeImage, &tempScene.camera, node);
   drawSceneEx(&tempScene, &targetImage, &tempScene.camera, collisionTarget);
   if(isImageOverlap(&nodeImage, &targetImage)) return TRUE;
@@ -230,10 +245,8 @@ void updateScene(Scene *scene, float elapsed) {
   }
   for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) {
     if(node->collisionMaskActive || node->collisionMaskPassive) {
-      Node nodeTemp;
       Node *collisionTarget;
       NodeIter targetIter;
-      nodeTemp = *node;
       targetIter.iterStack = initVector();
       concatVectorAlloc(&targetIter.iterStack, &iter.iterStack, sizeof(VectorIter));
       targetIter.currentIter = iter.currentIter;
@@ -303,7 +316,7 @@ void updateScene(Scene *scene, float elapsed) {
       } else {
         if(interval->interval < (unsigned int)diff) {
           interval->begin = current;
-          interval->callback(node);
+          interval->callback(node, interval->data);
         }
       }
       interval = nextData(&node->intervalEvents);

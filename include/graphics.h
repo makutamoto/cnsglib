@@ -14,7 +14,8 @@ typedef struct _Vertex {
 void initScreen(short width, short height);
 void setDivideByZ(int value);
 void setZNear(float value);
-void setColorFilter(unsigned char filter);
+void setColorFilterAND(unsigned char filter);
+void setColorFilterOR(unsigned char filter);
 float *initZBuffer(unsigned int width, unsigned int height);
 void flushBuffer(Image *image);
 

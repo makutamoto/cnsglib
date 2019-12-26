@@ -17,11 +17,12 @@
 Node initNode(const char *id, Image image) {
   Node node;
   memset(&node, 0, sizeof(Node));
-  memcpy_s(node.id, sizeof(node.id), id, min(sizeof(node.id), strlen(id)));
+  strcpy_s(node.id, sizeof(node.id), id);
 	node.scale[0] = 1.0;
 	node.scale[1] = 1.0;
   node.scale[2] = 1.0;
 	node.texture = image;
+  node.colorFilterAND = 0x0F;
   node.children = initVector();
   node.isVisible = TRUE;
   genIdentityMat4(node.lastTransformation);
@@ -94,11 +95,12 @@ void addNodeChild(Node *parent, Node *child) {
   child->parent = parent;
 }
 
-void discardNode(Node node) {
-  clearVector(&node.children);
+void discardNode(Node *node) {
+  if(node->parent) removeByData(&node->parent->children, node);
+  clearVector(&node->children);
 }
 
-void drawNode(Node *node, float zBuffer[], Node *replacedNode, unsigned char filter, Image *output) {
+void drawNode(Node *node, float zBuffer[], Node *replacedNode, unsigned char filterAND, unsigned char filterOR, Image *output) {
   Node *child;
   unsigned int halfWidth, halfHeight;
   halfWidth = output->width / 2;
@@ -144,10 +146,12 @@ void drawNode(Node *node, float zBuffer[], Node *replacedNode, unsigned char fil
   if(node->isInterface) {
     clearCameraMat4();
     setDivideByZ(FALSE);
-    setColorFilter(0x0F);
+    setColorFilterAND(0x0F & node->colorFilterAND);
+    setColorFilterOR(0x00 | node->colorFilterOR);
     scaleTransformation(node->scale[0] / halfWidth, node->scale[1] / halfHeight, 1.0F);
   } else {
-    setColorFilter(filter);
+    setColorFilterAND(filterAND & node->colorFilterAND);
+    setColorFilterOR(filterOR | node->colorFilterOR);
     scaleTransformation(node->scale[0], node->scale[1], node->scale[2]);
   }
   getTransformation(node->lastTransformation);
@@ -168,7 +172,7 @@ void drawNode(Node *node, float zBuffer[], Node *replacedNode, unsigned char fil
   resetIteration(&node->children);
   child = previousData(&node->children);
   while(child) {
-    drawNode(child, zBuffer, replacedNode, filter, output);
+    drawNode(child, zBuffer, replacedNode, filterAND, filterOR, output);
     child = previousData(&node->children);
   }
   popTransformation();
@@ -326,10 +330,11 @@ int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBO
   return collided;
 }
 
-void addIntervalEventNode(Node *node, unsigned int milliseconds, void (*callback)(Node*)) {
+void addIntervalEventNode(Node *node, unsigned int milliseconds, void (*callback)(Node*, void*), void *data) {
   IntervalEventNode *interval = malloc(sizeof(IntervalEventNode));
   interval->begin = clock();
   interval->interval = milliseconds * CLOCKS_PER_SEC / 1000;
+  interval->data = data;
   interval->callback = callback;
   push(&node->intervalEvents, interval);
 }

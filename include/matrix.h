@@ -18,6 +18,10 @@
 #define YZ_MASK 6
 #define XYZ_MASK 7
 
+#define printVec2(vec) printf("(%10f, %10f)\n", (double)(vec)[0], (double)(vec)[1])
+#define printVec3(vec) printf("(%10f, %10f, %10f)\n", (double)(vec)[0], (double)(vec)[1], (double)(vec)[2])
+#define printVec4(vec) printf("(%10f, %10f, %10f, %10f)\n", (double)(vec)[0], (double)(vec)[1], (double)(vec)[2], (double)(vec)[3])
+
 float *convVec3toVec4(const float in[3], float out[4]);
 float *convVec4toVec3(const float in[4], float out[3]);
 float *extractComponents3(const float in[3], int mask, float out[3]);
@@ -41,6 +45,7 @@ float length3(const float vector[3]);
 float distance2(const float a[2], const float b[2]);
 float distance3(const float a[3], const float b[3]);
 float distancePoint2(const float point[2], const float vector[2]);
+float *midPoint3(float pointA[3], float pointB[3], float out[3]);
 float* addVec2(const float a[2], const float b[2], float out[2]);
 float* addVec3(const float a[3], const float b[3], float out[3]);
 float* subVec2(const float a[2], const float b[2], float out[2]);
@@ -104,8 +109,6 @@ float (*genPerspectiveMat4(float fovY, float zNear, float zFar, float aspect, fl
 
 float (*genInertiaTensorBox(float mass, float width, float height, float depth, float out[3][3]))[3];
 
-void printVec3(float vec[3]);
-void printVec4(float vec[4]);
 void printMat3(float mat[3][3]);
 void printMat4(float mat[4][4]);
 

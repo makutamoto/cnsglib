@@ -32,7 +32,7 @@ typedef struct {
 } Shape;
 
 typedef struct _Node {
-	char id[10];
+	char id[32];
 	float velocity[3];
 	float angVelocity[3];
 	float angMomentum[3];
@@ -46,6 +46,8 @@ typedef struct _Node {
 	float aabb[3][2];
 	Image texture;
 	Image collisionTexture;
+	unsigned char colorFilterAND;
+  unsigned char colorFilterOR;
 	Shape shape;
 	Shape collisionShape;
 	unsigned int collisionFlags;
@@ -73,7 +75,8 @@ typedef struct {
 typedef struct {
 	clock_t begin;
 	unsigned int interval;
-	void (*callback)(Node*);
+	void *data;
+	void (*callback)(Node*, void *data);
 } IntervalEventNode;
 
 typedef struct {
@@ -90,9 +93,9 @@ Node initNodeText(const char *id, float px, float py, Align alignX, Align alignY
 NodeIter initNodeIter(Vector *layer);
 Node* nextNode(NodeIter *iter);
 void addNodeChild(Node *parent, Node *child);
-void discardNode(Node node);
+void discardNode(Node *node);
 
-void drawNode(Node *node, float zBuffer[], Node *replacedNode, unsigned char filter, Image *output);
+void drawNode(Node *node, float zBuffer[], Node *replacedNode, unsigned char filterAND, unsigned char filterOR, Image *output);
 void applyForce(Node *node, float force[3], int mask, int rotation);
 float (*getNodeTransformation(Node node, float out[4][4]))[4];
 float (*getWorldTransfomration(Node *node, float out[4][4]))[4];
@@ -100,7 +103,7 @@ float (*getWorldTransfomration(Node *node, float out[4][4]))[4];
 CollisionInfoNode2Node initCollisionInfoNode2Node(Node *nodeA, Node *nodeB, float triangle[3][3], unsigned long normalIndex, unsigned long *uvIndex[3], float contacts[2][3], float depth);
 int testCollision(Node a, Node b);
 int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBOut);
-void addIntervalEventNode(Node *node, unsigned int milliseconds, void (*callback)(Node*));
+void addIntervalEventNode(Node *node, unsigned int milliseconds, void (*callback)(Node*, void*), void *data);
 
 Shape initShape(float mass);
 Shape initShapePlane(float width, float height, unsigned char color, float mass);
