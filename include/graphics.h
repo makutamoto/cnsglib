@@ -6,7 +6,7 @@
 #include "./vector.h"
 #include "./image.h"
 
-typedef struct _Vertex {
+typedef struct {
 	float components[4];
 	unsigned char color;
 } Vertex;

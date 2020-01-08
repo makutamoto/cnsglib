@@ -6,6 +6,7 @@ void initCNSG(int argc, char *argv[], unsigned int width, unsigned int height) {
   initSound(argc, argv);
   initInput();
 	initScreen(width, height);
+  initColorImages();
 }
 
 void deinitCNSG(void) {

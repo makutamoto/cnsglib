@@ -330,7 +330,7 @@ int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBO
   return collided;
 }
 
-void addIntervalEventNode(Node *node, unsigned int milliseconds, void (*callback)(Node*, void*), void *data) {
+void addIntervalEventNode(Node *node, unsigned int milliseconds, int (*callback)(Node*, void*), void *data) {
   IntervalEventNode *interval = malloc(sizeof(IntervalEventNode));
   interval->begin = clock();
   interval->interval = milliseconds * CLOCKS_PER_SEC / 1000;

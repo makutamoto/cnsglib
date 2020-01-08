@@ -19,10 +19,13 @@ typedef struct {
 } FontSJIS;
 
 extern Image NO_IMAGE;
+extern Image TRANSPARENT_IMAGE;
+extern Image BLACK_IMAGE;
 
 #define isImageSameSize(imageA, imageB) ((imageA).width == (imageB).width && (imageA).height == (imageB).height)
 #define isCharacterMultibyte(character) (((character) >= 0x81 && (character) <= 0x9F) || ((character) >= 0xE0 && (character) <= 0xEF))
 
+void initColorImages(void);
 unsigned long uvToIndex(const Image *image, float uv[2]);
 Image initImage(unsigned int width, unsigned int height, unsigned char color, unsigned char transparent);
 Image initImageBulk(unsigned int width, unsigned int height, unsigned char transparent);

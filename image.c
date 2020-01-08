@@ -7,6 +7,13 @@
 #include "./include/colors.h"
 
 Image NO_IMAGE;
+Image TRANSPARENT_IMAGE;
+Image BLACK_IMAGE;
+
+void initColorImages(void) {
+  TRANSPARENT_IMAGE = initImage(1, 1, BLACK, BLACK);
+  BLACK_IMAGE = initImage(1, 1, BLACK, NULL_COLOR);
+}
 
 unsigned long uvToIndex(const Image *image, float uv[2]) {
   unsigned int x, y;

@@ -12,20 +12,16 @@
 
 #define VELOCITY_LIMIT 200.0F * 10000.0F / 3600.0F
 
-Camera initCamera(float x, float y, float z, float aspect) {
-  Camera camera;
-  memset(&camera, 0, sizeof(Camera));
-  camera.position[0] = x;
-  camera.position[1] = y;
-  camera.position[2] = z;
-  camera.worldUp[0] = 0.0F;
-  camera.worldUp[1] = 1.0F;
-  camera.worldUp[2] = 0.0F;
-  camera.fov = PI / 3.0F * 2.0F;
-  camera.nearLimit = 10.0F;
-  camera.farLimit = 1000.0F;
-  camera.aspect = aspect;
-  return camera;
+void initCamera(Camera *camera, float x, float y, float z) {
+  memset(camera, 0, sizeof(Camera));
+  camera->position[0] = x;
+  camera->position[1] = y;
+  camera->position[2] = z;
+  camera->worldUp[1] = 1.0F;
+  camera->fov = PI / 3.0F * 2.0F;
+  camera->nearLimit = 10.0F;
+  camera->farLimit = 1000.0F;
+  camera->sceneFilterAND = 0x0F;
 }
 
 Scene initScene(void) {
@@ -33,12 +29,11 @@ Scene initScene(void) {
   memset(&scene, 0, sizeof(Scene));
   scene.acceleration[1] = -98.0F;
   scene.nodes = initVector();
-  scene.camera = initCamera(0.0F, 0.0F, 0.0F, 0.0F);
-  scene.sceneFilterAND = 0x0F;
+  initCamera(&scene.camera, 0.0F, 0.0F, 0.0F);
   return scene;
 }
 
-void addIntervalEventScene(Scene *scene, unsigned int milliseconds, void (*callback)(Scene*)) {
+void addIntervalEventScene(Scene *scene, unsigned int milliseconds, int (*callback)(Scene*)) {
   IntervalEventScene *interval = malloc(sizeof(IntervalEventScene));
   interval->begin = clock();
   interval->interval = milliseconds * CLOCKS_PER_SEC / 1000;
@@ -90,13 +85,14 @@ void drawSceneEx(Scene *scene, Image *output, Camera *camera, Node *replacedNode
   iterf(&scene->nodes, &node) {
     setCameraMat4(cameraMatrix);
     setDivideByZ(TRUE);
-    drawNode(node, zBuffer, replacedNode, scene->sceneFilterAND, scene->sceneFilterOR, output);
+    drawNode(node, zBuffer, replacedNode, camera->sceneFilterAND, camera->sceneFilterOR, output);
+  }
+  iterf(&camera->nodes, &node) {
+    setCameraMat4(cameraMatrix);
+    setDivideByZ(TRUE);
+    drawNode(node, zBuffer, replacedNode, 0x0F, 0x00, output);
   }
   free(zBuffer);
-}
-
-void drawScene(Scene *scene, Image *output) {
-  drawSceneEx(scene, output, &scene->camera, NULL);
 }
 
 static void impulseNodes(Node *nodeA, Node *nodeB, float normal[3], float point[3], float depth) {
@@ -178,18 +174,19 @@ static void collideNodes(Node *nodeA, Node *nodeB, Vector *info, float staticFri
   freeVector(&checkedNormals);
 }
 
-int is2dCollided(Scene *scene, Node *node, Node *collisionTarget) {
+static int is2dCollided(Scene *scene, Camera *camera, Node *node, Node *collisionTarget) {
   Scene tempScene;
   Image nodeImage, targetImage;
   Node *mainNode;
   nodeImage = initImageBulk(128, 128, NULL_COLOR);
   targetImage = initImageBulk(128, 128, NULL_COLOR);
   tempScene = *scene;
+  tempScene.camera = *camera;
   tempScene.camera.aspect = 0.0F;
   tempScene.camera.parent = NULL;
   tempScene.background = WHITE;
-  tempScene.sceneFilterAND = 0x0F;
-  tempScene.sceneFilterOR = 0x00;
+  tempScene.camera.sceneFilterAND = 0x0F;
+  tempScene.camera.sceneFilterOR = 0x00;
   mainNode = (node->aabb[0][1] > collisionTarget->aabb[0][1] && node->aabb[0][0] < collisionTarget->aabb[0][0]) ? collisionTarget : node;
   if(mainNode->parent) {
     float tempVec4[2][4];
@@ -210,9 +207,36 @@ int is2dCollided(Scene *scene, Node *node, Node *collisionTarget) {
   return FALSE;
 }
 
-void updateScene(Scene *scene, float elapsed) {
+static void runNodeBehaviour(Node *node, float elapsed) {
+  IntervalEventNode *interval;
+  clearVec3(node->force);
+  clearVec3(node->torque);
+  if(node->behaviour != NULL) {
+    if(!node->behaviour(node, elapsed)) return;
+  }
+  resetIteration(&node->intervalEvents);
+  interval = nextData(&node->intervalEvents);
+  while(interval) {
+    clock_t current = clock();
+    clock_t diff = current - interval->begin;
+    if(diff < 0) {
+      interval->begin = current;
+    } else {
+      if(interval->interval < (unsigned int)diff) {
+        interval->begin = current;
+        if(!interval->callback(node, interval->data)) {
+          previousData(&node->intervalEvents);
+          removeByData(&node->intervalEvents, interval);
+        }
+      }
+    }
+    interval = nextData(&node->intervalEvents);
+  }
+}
+
+void updateSceneEx(Scene *scene, float elapsed, Camera *camera) {
   Node *node;
-  NodeIter iter;
+  NodeIter iter, cameraIter;
   IntervalEventScene *intervalScene;
   scene->clock += elapsed;
   iter = initNodeIter(&scene->nodes);
@@ -256,7 +280,7 @@ void updateScene(Scene *scene, float elapsed) {
         unsigned int flagsB = node->collisionMaskActive & collisionTarget->collisionMaskPassive;
         if(flagsA | flagsB) {
           if(node->physicsMode == PHYSICS_2D && collisionTarget->physicsMode == PHYSICS_2D) {
-            if(is2dCollided(scene, node, collisionTarget)) {
+            if(is2dCollided(scene, camera, node, collisionTarget)) {
               CollisionInfo userInfo = { 0 };
               if(!(node->isThrough || collisionTarget->isThrough)) {
                 node->position[0] = node->previousPosition[0];
@@ -299,29 +323,9 @@ void updateScene(Scene *scene, float elapsed) {
       }
     }
   }
-  for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) {
-    IntervalEventNode *interval;
-    clearVec3(node->force);
-    clearVec3(node->torque);
-    if(node->behaviour != NULL) {
-      if(!node->behaviour(node, elapsed)) continue;
-    }
-    resetIteration(&node->intervalEvents);
-    interval = nextData(&node->intervalEvents);
-    while(interval) {
-      clock_t current = clock();
-      clock_t diff = current - interval->begin;
-      if(diff < 0) {
-        interval->begin = current;
-      } else {
-        if(interval->interval < (unsigned int)diff) {
-          interval->begin = current;
-          interval->callback(node, interval->data);
-        }
-      }
-      interval = nextData(&node->intervalEvents);
-    }
-  }
+  for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) runNodeBehaviour(node, elapsed);
+  cameraIter = initNodeIter(&camera->nodes);
+  for(node = nextNode(&cameraIter);node != NULL;node = nextNode(&cameraIter)) runNodeBehaviour(node, elapsed);
   if(scene->behaviour) scene->behaviour(scene, elapsed);
   resetIteration(&scene->intervalEvents);
   intervalScene = nextData(&scene->intervalEvents);
@@ -333,7 +337,10 @@ void updateScene(Scene *scene, float elapsed) {
     } else {
       if(intervalScene->interval < (unsigned int)diff) {
         intervalScene->begin = current;
-        intervalScene->callback(scene);
+        if(!intervalScene->callback(scene)) {
+          previousData(&scene->intervalEvents);
+          removeByData(&scene->intervalEvents, intervalScene);
+        }
       }
     }
     intervalScene = nextData(&scene->intervalEvents);

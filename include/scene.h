@@ -17,15 +17,16 @@ typedef struct {
   float farLimit;
   float aspect;
   Node *parent;
+  Vector nodes;
+  unsigned char sceneFilterAND;
+  unsigned char sceneFilterOR;
   int isRotationDisabled;
 } Camera;
 
-typedef struct _Scene {
+typedef struct {
   float acceleration[3];
   Vector nodes;
   unsigned char background;
-  unsigned char sceneFilterAND;
-  unsigned char sceneFilterOR;
   Camera camera;
   Vector intervalEvents;
   float clock;
@@ -40,16 +41,18 @@ typedef struct {
 typedef struct {
 	clock_t begin;
 	unsigned int interval;
-	void (*callback)(Scene*);
+	int (*callback)(Scene*);
 } IntervalEventScene;
 
-Camera initCamera(float x, float y, float z, float aspect);
+#define drawScene(scene, output) drawSceneEx((scene), (output), &(scene)->camera, NULL)
+#define updateScene(scene, elapsed) updateSceneEx(scene, elapsed, &(scene)->camera)
+
+void initCamera(Camera *camera, float x, float y, float z);
 
 Scene initScene(void);
-void addIntervalEventScene(Scene *scene, unsigned int milliseconds, void (*callback)(Scene*));
+void addIntervalEventScene(Scene *scene, unsigned int milliseconds, int (*callback)(Scene*));
 void drawSceneEx(Scene *scene, Image *output, Camera *camera, Node *replacedNode);
-void drawScene(Scene *scene, Image *output);
-void updateScene(Scene *scene, float elapsed);
+void updateSceneEx(Scene *scene, float elapsed, Camera *camera);
 void discardScene(Scene *scene);
 
 #endif

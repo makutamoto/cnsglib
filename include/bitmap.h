@@ -9,7 +9,7 @@
 
 #pragma pack(1)
 
-typedef struct _BitmapHeader {
+typedef struct {
   volatile char magicNumber[2];
   volatile uint32_t size;
   volatile uint32_t reserved;
@@ -17,7 +17,7 @@ typedef struct _BitmapHeader {
   volatile uint32_t dibSize;
 } BitmapHeader;
 
-typedef struct _BitmapInfoHeader {
+typedef struct {
   int32_t width;
   int32_t height;
   uint16_t nofColorPlanes;

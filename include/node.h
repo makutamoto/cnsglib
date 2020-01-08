@@ -31,7 +31,7 @@ typedef struct {
 	float worldInverseInertia[3][3];
 } Shape;
 
-typedef struct _Node {
+typedef struct Node {
 	char id[32];
 	float velocity[3];
 	float angVelocity[3];
@@ -55,7 +55,7 @@ typedef struct _Node {
 	unsigned int collisionMaskPassive;
 	Vector collisionTargets;
 	Vector intervalEvents;
-	struct _Node *parent;
+	struct Node *parent;
 	Vector children;
 	int (*behaviour)(struct _Node*, float);
 	PhysicsMode physicsMode;
@@ -76,7 +76,7 @@ typedef struct {
 	clock_t begin;
 	unsigned int interval;
 	void *data;
-	void (*callback)(Node*, void *data);
+	int (*callback)(Node*, void *data);
 } IntervalEventNode;
 
 typedef struct {
@@ -103,7 +103,7 @@ float (*getWorldTransfomration(Node *node, float out[4][4]))[4];
 CollisionInfoNode2Node initCollisionInfoNode2Node(Node *nodeA, Node *nodeB, float triangle[3][3], unsigned long normalIndex, unsigned long *uvIndex[3], float contacts[2][3], float depth);
 int testCollision(Node a, Node b);
 int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBOut);
-void addIntervalEventNode(Node *node, unsigned int milliseconds, void (*callback)(Node*, void*), void *data);
+void addIntervalEventNode(Node *node, unsigned int milliseconds, int (*callback)(Node*, void*), void *data);
 
 Shape initShape(float mass);
 Shape initShapePlane(float width, float height, unsigned char color, float mass);

@@ -1,3 +1,8 @@
+/**
+* @file matrix.h
+* @brief contains arithmetic library.
+*/
+
 #ifndef MATRIX_H
 #define MATRIX_H
 
@@ -10,16 +15,46 @@
 #define SIZE_VEC3 (3 * sizeof(float))
 #define SIZE_MAT4 (16 * sizeof(float))
 
+/**
+* @brief A mask that specifies x element of a vector.
+*/
 #define X_MASK 1
+/**
+* @brief A mask that specifies y element of a vector.
+*/
 #define Y_MASK 2
+/**
+* @brief A mask that specifies x and y elements of a vector.
+*/
 #define XY_MASK 3
+/**
+* @brief A mask that specifies z element of a vector.
+*/
 #define Z_MASK 4
+/**
+* @brief A mask that specifies x and z elements of a vector.
+*/
 #define XZ_MASK 5
+/**
+* @brief A mask that specifies y and z elements of a vector.
+*/
 #define YZ_MASK 6
+/**
+* @brief A mask that specifies x, y and z elements of a vector.
+*/
 #define XYZ_MASK 7
 
+/**
+* @brief Print two dimensional vector to stdout.
+*/
 #define printVec2(vec) printf("(%10f, %10f)\n", (double)(vec)[0], (double)(vec)[1])
+/**
+* @brief Print three dimensional vector to stdout.
+*/
 #define printVec3(vec) printf("(%10f, %10f, %10f)\n", (double)(vec)[0], (double)(vec)[1], (double)(vec)[2])
+/**
+* @brief Print four dimensional vector to stdout.
+*/
 #define printVec4(vec) printf("(%10f, %10f, %10f, %10f)\n", (double)(vec)[0], (double)(vec)[1], (double)(vec)[2], (double)(vec)[3])
 
 float *convVec3toVec4(const float in[3], float out[4]);

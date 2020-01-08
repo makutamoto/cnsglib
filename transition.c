@@ -85,6 +85,54 @@ void revoluteTransition(Image *image, float ratio, int inverse, Image *out) {
   }
 }
 
+void stripeTransitionH(Image *image, int n, float ratio, int direction, int inverse, Image *out) {
+  int row, col;
+  int stride;
+  stride = ceilf((float)image->width / n);
+  if(ratio <= 0.0F && !inverse) {
+    *out = initImage(image->width, image->height, BLACK, NULL_COLOR);
+    return;
+  } else if(ratio >= 1.0F && inverse) {
+    copyImage(out, image);
+    return;
+  }
+  *out = initImageBulk(image->width, image->height, NULL_COLOR);
+  for(row = 0;row < (int)out->height;row++) {
+    for(col = 0;col < (int)out->width;col++) {
+      long index = row * image->width + col;
+      if((direction ? stride - col % stride : col % stride) <= ratio * stride) {
+        out->data[index] = inverse ? BLACK : image->data[index];
+      } else {
+        out->data[index] = inverse ? image->data[index] : BLACK;
+      }
+    }
+  }
+}
+
+void stripeTransitionV(Image *image, int n, float ratio, int direction, int inverse, Image *out) {
+  int row, col;
+  int stride;
+  stride = ceilf((float)image->height / n);
+  if(ratio <= 0.0F && !inverse) {
+    *out = initImage(image->width, image->height, BLACK, NULL_COLOR);
+    return;
+  } else if(ratio >= 1.0F && inverse) {
+    copyImage(out, image);
+    return;
+  }
+  *out = initImageBulk(image->width, image->height, NULL_COLOR);
+  for(row = 0;row < (int)out->height;row++) {
+    for(col = 0;col < (int)out->width;col++) {
+      long index = row * image->width + col;
+      if((direction ? stride - row % stride : row % stride) <= ratio * stride) {
+        out->data[index] = inverse ? BLACK : image->data[index];
+      } else {
+        out->data[index] = inverse ? image->data[index] : BLACK;
+      }
+    }
+  }
+}
+
 Image ThreeDimensionTransition(Image imageA, Image imageB, float x, float y, float ratio) {
   Image output;
   float fov;

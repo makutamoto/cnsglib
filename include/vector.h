@@ -1,20 +1,20 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
-typedef struct _Vector {
-	size_t length;
-	struct _VectorItem *firstItem;
-	struct _VectorItem *currentItem;
-	struct _VectorItem *lastItem;
-	struct _VectorItem *cacheItem;
-	size_t cacheIndex;
-} Vector;
-
-typedef struct _VectorItem {
-	struct _VectorItem *previousItem;
-	struct _VectorItem *nextItem;
+typedef struct VectorItem {
+	struct VectorItem *previousItem;
+	struct VectorItem *nextItem;
 	void *data;
 } VectorItem;
+
+typedef struct {
+	size_t length;
+	VectorItem *firstItem;
+	VectorItem *currentItem;
+	VectorItem *lastItem;
+	VectorItem *cacheItem;
+	size_t cacheIndex;
+} Vector;
 
 typedef struct {
 	Vector *vector;
