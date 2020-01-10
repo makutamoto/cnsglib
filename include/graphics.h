@@ -13,6 +13,7 @@ typedef struct {
 
 void initScreen(short width, short height);
 void setDivideByZ(int value);
+void setFakeZ(int use, float val);
 void setZNear(float value);
 void setColorFilterAND(unsigned char filter);
 void setColorFilterOR(unsigned char filter);

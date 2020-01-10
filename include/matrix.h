@@ -13,6 +13,7 @@
 
 #define SIZE_VEC2 (2 * sizeof(float))
 #define SIZE_VEC3 (3 * sizeof(float))
+#define SIZE_VEC4 (4 * sizeof(float))
 #define SIZE_MAT4 (16 * sizeof(float))
 
 /**
@@ -57,6 +58,14 @@
 */
 #define printVec4(vec) printf("(%10f, %10f, %10f, %10f)\n", (double)(vec)[0], (double)(vec)[1], (double)(vec)[2], (double)(vec)[3])
 
+#define clearVec2(vec) memset(vec, 0, SIZE_VEC2)
+#define clearVec3(vec) memset(vec, 0, SIZE_VEC3)
+#define clearVec4(vec) memset(vec, 0, SIZE_VEC4)
+
+#define copyVec2(dest, src) memcpy_s(dest, SIZE_VEC2, src, SIZE_VEC2)
+#define copyVec3(dest, src) memcpy_s(dest, SIZE_VEC3, src, SIZE_VEC3)
+#define copyVec4(dest, src) memcpy_s(dest, SIZE_VEC4, src, SIZE_VEC4)
+
 float *convVec3toVec4(const float in[3], float out[4]);
 float *convVec4toVec3(const float in[4], float out[3]);
 float *extractComponents3(const float in[3], int mask, float out[3]);
@@ -68,7 +77,6 @@ float* setVec3(float vec[3], float val, int mask);
 int equalVec3(float a[3], float b[3]);
 int maxAbsIndex3(float vector[3]);
 float cosVec3(float a[3], float b[3]);
-float *clearVec3(float in[3]);
 
 float dot2(const float a[2], const float b[2]);
 float dot3(const float a[3], const float b[3]);

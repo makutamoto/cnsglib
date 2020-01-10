@@ -246,10 +246,10 @@ void updateSceneEx(Scene *scene, float elapsed, Camera *camera) {
     float tempMat3[2][3][3];
     float orientation[3][3];
     CollisionInfo *info;
-    if(node->collisionShape.mass == 0.0F) continue;
-    if(node->physicsMode == PHYSICS_3D) addVec3(node->force, mulVec3ByScalar(scene->acceleration, node->collisionShape.mass, temp), node->force);
     node->previousPosition[0] = node->position[0];
     node->previousPosition[1] = node->position[1];
+    if(node->collisionShape.mass == 0.0F) continue;
+    if(node->physicsMode == PHYSICS_3D) addVec3(node->force, mulVec3ByScalar(scene->acceleration, node->collisionShape.mass, temp), node->force);
     addVec3(node->position, mulVec3ByScalar(node->velocity, elapsed, temp), node->position);
     genRotationMat4(node->angle[0], node->angle[1], node->angle[2], tempMat4);
     convMat4toMat3(tempMat4, orientation);

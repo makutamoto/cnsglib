@@ -40,6 +40,7 @@ typedef struct Node {
 	float torque[3];
 	float previousPosition[3];
 	float position[3];
+	float fakeZ;
 	float angle[3];
 	float scale[3];
 	float lastTransformation[4][4];
@@ -63,6 +64,7 @@ typedef struct Node {
 	Align interfaceAlign[2];
 	int isVisible;
 	int isThrough;
+	int useFakeZ;
 	void *data;
 }	Node;
 

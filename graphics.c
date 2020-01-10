@@ -16,6 +16,8 @@
 static HANDLE screen;
 
 static int divideByZ = TRUE;
+static int useFakeZ = FALSE;
+static float fakeZ;
 static float zNearOver;
 static float camera[4][4];
 static float transformation[4][4];
@@ -54,6 +56,11 @@ void initScreen(short width, short height) {
 
 void setDivideByZ(int value) {
 	divideByZ = value;
+}
+
+void setFakeZ(int use, float val) {
+	useFakeZ = use;
+	fakeZ = val;
 }
 
 void setZNear(float value) {
@@ -241,12 +248,16 @@ static void projectTriangle(float points[3][4], Image image, const float uv[3][2
 				weights[2] /= area;
 				depth = 1.0F / (transformed[0][3] * weights[0] + transformed[1][3] * weights[1] + transformed[2][3] * weights[2]);
 				z = depth * (transformed[0][2] * weights[0] + transformed[1][2] * weights[1] + transformed[2][2] * weights[2]);
-				if(z <= 1.0F && depth < zBuffer[index]) {
+				if(z <= 1.0F && (useFakeZ ? fakeZ : depth) < zBuffer[index]) {
 					if(image.data == NULL) {
 						color = (unsigned char)roundf(depth * (vertexColors[0] * weights[0] + vertexColors[1] * weights[1] + vertexColors[2] * weights[2]));
 						if(color != NULL_COLOR) {
 							output->data[index] = color;
-							zBuffer[index] = depth;
+							if(useFakeZ) {
+								zBuffer[index] = fakeZ;
+							} else {
+								zBuffer[index] = depth;
+							}
 						}
 					} else {
 						dataCoords[0] = depth * (textures[0][0] * weights[0] + textures[1][0] * weights[1] + textures[2][0] * weights[2]);
@@ -254,7 +265,11 @@ static void projectTriangle(float points[3][4], Image image, const float uv[3][2
 						color = image.data[image.width * min((unsigned int)(floorf(image.height * dataCoords[1])), image.height - 1) + min((unsigned int)(floorf(image.width * dataCoords[0])), image.width - 1)];
 						if(color != image.transparent) {
 							output->data[index] = (color & colorFilterAND) | colorFilterOR;
-							zBuffer[index] = depth;
+							if(useFakeZ) {
+								zBuffer[index] = fakeZ;
+							} else {
+								zBuffer[index] = depth;
+							}
 						}
 					}
 				}

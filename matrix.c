@@ -74,11 +74,6 @@ float cosVec3(float a[3], float b[3]) {
 	return dot3(a, b) / (length3(a) * length3(b));
 }
 
-float *clearVec3(float in[3]) {
-	memset(in, 0, 3 * sizeof(float));
-	return in;
-};
-
 float dot2(const float a[2], const float b[2]) {
 	return a[0] * b[0] + a[1] * b[1];
 }

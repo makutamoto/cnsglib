@@ -155,6 +155,7 @@ void drawNode(Node *node, float zBuffer[], Node *replacedNode, unsigned char fil
     scaleTransformation(node->scale[0], node->scale[1], node->scale[2]);
   }
   getTransformation(node->lastTransformation);
+  setFakeZ(node->useFakeZ, node->fakeZ);
   if(replacedNode) {
     if(node == replacedNode) {
       fillPolygons(node->shape.vertices, node->shape.indices, node->collisionTexture, node->shape.uv, node->shape.uvIndices, zBuffer, output);

@@ -180,7 +180,7 @@ void drawTextSJIS(Image target, FontSJIS font, unsigned int x, unsigned int y, c
 	}
 }
 
-Image loadBitmap(char *fileName, unsigned char transparent) {
+Image loadBitmapEx(char *fileName, unsigned char transparent, int allowNotFound) {
 	Image image = { 0, 0, NULL_COLOR, 0, NULL };
 	FILE *file;
 	BitmapHeader header;
@@ -188,7 +188,7 @@ Image loadBitmap(char *fileName, unsigned char transparent) {
 	uint32_t *img;
 	unsigned int y;
 	if(fopen_s(&file, fileName, "rb")) {
-		fprintf(stderr, "Failed to open the file '%s'\n", fileName);
+		if(!allowNotFound) fprintf(stderr, "Failed to open the file '%s'\n", fileName);
 		fclose(file);
 		return image;
 	}
