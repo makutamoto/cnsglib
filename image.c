@@ -189,7 +189,6 @@ Image loadBitmapEx(char *fileName, unsigned char transparent, int allowNotFound)
 	unsigned int y;
 	if(fopen_s(&file, fileName, "rb")) {
 		if(!allowNotFound) fprintf(stderr, "Failed to open the file '%s'\n", fileName);
-		fclose(file);
 		return image;
 	}
 	if(fread_s(&header, sizeof(BitmapHeader), 1, sizeof(BitmapHeader), file) != sizeof(BitmapHeader)) {

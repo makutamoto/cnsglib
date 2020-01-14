@@ -1,3 +1,9 @@
+/**
+* @file bitmap.h
+* \~english @brief Defines the structure of bimap images.
+* \~japanese @brief ビットマップ画像の構造を定義します。
+*/
+
 #ifndef BITMAP_H
 #define BITMAP_H
 
@@ -9,6 +15,9 @@
 
 #pragma pack(1)
 
+/**
+* \~ @brief Bitmap Header.
+*/
 typedef struct {
   volatile char magicNumber[2];
   volatile uint32_t size;
@@ -17,6 +26,9 @@ typedef struct {
   volatile uint32_t dibSize;
 } BitmapHeader;
 
+/**
+* \~ @brief Bitmap Info Header.
+*/
 typedef struct {
   int32_t width;
   int32_t height;

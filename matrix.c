@@ -125,26 +125,6 @@ float distance3(const float a[3], const float b[3]) {
 	return length3(position);
 }
 
-float distancePoint2(const float point[2], const float vector[2]) {
-	float vectorLen = length2(vector);
-	float projectedPointLen;
-	float projectedPoint[2];
-	float difference[2];
-	if(vectorLen == 0.0F) return length2(point);
-	projectedPointLen = dot2(point, vector) / vectorLen;
-	normalize2(vector, projectedPoint);
-	mulVec2ByScalar(projectedPoint, projectedPointLen, projectedPoint);
-	subVec2(point, projectedPoint, difference);
-	return length2(difference);
-}
-
-float *midPoint3(float pointA[3], float pointB[3], float out[3]) {
-	out[0] = (pointA[0] + pointB[0]) / 2.0F;
-	out[1] = (pointA[1] + pointB[1]) / 2.0F;
-	out[2] = (pointA[2] + pointB[2]) / 2.0F;
-	return out;
-}
-
 float* addVec2(const float a[2], const float b[2], float out[2]) {
 	out[0] = a[0] + b[0];
 	out[1] = a[1] + b[1];

@@ -1,3 +1,9 @@
+/**
+* @file scene.h
+* \~english @brief Scene.
+* \~japanese @brief ÉVÅ[ÉìÅB
+*/
+
 #ifndef SCENE_H
 #define SCENE_H
 
@@ -23,14 +29,14 @@ typedef struct {
   int isRotationDisabled;
 } Camera;
 
-typedef struct {
+typedef struct Scene {
   float acceleration[3];
   Vector nodes;
   unsigned char background;
   Camera camera;
   Vector intervalEvents;
   float clock;
-  void (*behaviour)(struct _Scene*, float);
+  void (*behaviour)(struct Scene*, float);
 } Scene;
 
 typedef struct {

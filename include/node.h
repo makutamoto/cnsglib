@@ -1,3 +1,9 @@
+/**
+* @file node.h
+* \~english @brief Node.
+* \~japanese @brief ÉmÅ[ÉhÅB
+*/
+
 #ifndef NODE_H
 #define NODE_H
 
@@ -58,7 +64,7 @@ typedef struct Node {
 	Vector intervalEvents;
 	struct Node *parent;
 	Vector children;
-	int (*behaviour)(struct _Node*, float);
+	int (*behaviour)(struct Node*, float);
 	PhysicsMode physicsMode;
 	int isInterface;
 	Align interfaceAlign[2];
@@ -103,6 +109,7 @@ float (*getNodeTransformation(Node node, float out[4][4]))[4];
 float (*getWorldTransfomration(Node *node, float out[4][4]))[4];
 
 CollisionInfoNode2Node initCollisionInfoNode2Node(Node *nodeA, Node *nodeB, float triangle[3][3], unsigned long normalIndex, unsigned long *uvIndex[3], float contacts[2][3], float depth);
+int testCollision2d(Node a, Node b);
 int testCollision(Node a, Node b);
 int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBOut);
 void addIntervalEventNode(Node *node, unsigned int milliseconds, int (*callback)(Node*, void*), void *data);

@@ -280,7 +280,7 @@ void updateSceneEx(Scene *scene, float elapsed, Camera *camera) {
         unsigned int flagsB = node->collisionMaskActive & collisionTarget->collisionMaskPassive;
         if(flagsA | flagsB) {
           if(node->physicsMode == PHYSICS_2D && collisionTarget->physicsMode == PHYSICS_2D) {
-            if(is2dCollided(scene, camera, node, collisionTarget)) {
+            if(testCollision2d(*node, *collisionTarget) && is2dCollided(scene, camera, node, collisionTarget)) {
               CollisionInfo userInfo = { 0 };
               if(!(node->isThrough || collisionTarget->isThrough)) {
                 node->position[0] = node->previousPosition[0];

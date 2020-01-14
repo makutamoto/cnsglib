@@ -1,3 +1,9 @@
+/**
+* @file cnsg.h
+* \~english @brief Header to load this library.
+* \~japanese @brief ライブラリを読み込むためのヘッダ。
+*/
+
 #ifndef CNSG_H
 #define CNSG_H
 

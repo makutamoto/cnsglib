@@ -1,3 +1,9 @@
+/**
+* @file borland.h
+* \~english @brief Defines functions and macros for bcc55 compatibility.
+* \~japanese @brief BCC55å›ä∑ÇÃÇΩÇﬂÇÃíËã`ÅB
+*/
+
 #ifdef __BORLANDC__
 #ifndef BORLAND_H
 #define BORLAND_H

@@ -215,6 +215,11 @@ float (*getWorldTransfomration(Node *node, float out[4][4]))[4] {
   return out;
 }
 
+int testCollision2d(Node a, Node b) {
+  return (a.aabb[0][0] <= b.aabb[0][1] && a.aabb[0][1] >= b.aabb[0][0]) &&
+         (a.aabb[1][0] <= b.aabb[1][1] && a.aabb[1][1] >= b.aabb[1][0]);
+}
+
 int testCollision(Node a, Node b) {
   return (a.aabb[0][0] <= b.aabb[0][1] && a.aabb[0][1] >= b.aabb[0][0]) &&
          (a.aabb[1][0] <= b.aabb[1][1] && a.aabb[1][1] >= b.aabb[1][0]) &&
@@ -226,7 +231,7 @@ float (*mulMat4ByTriangle(float mat[4][4], float triangle[3][3], float out[3][3]
   for(i = 0;i < 3;i++) {
     float point[4];
     float transformed[4];
-    COPY_ARY(point, triangle[i]);
+    copyVec3(point, triangle[i]);
     point[3] = 1.0F;
     mulMat4Vec4(mat, point, transformed);
     out[i][0] = transformed[0];

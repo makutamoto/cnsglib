@@ -1,3 +1,9 @@
+/**
+* @file graphics.h
+* \~english @brief Defines functions to render graphics.
+* \~japanese @brief グラフィック系の関数定義。
+*/
+
 #ifndef GRAPHICS_H
 #define GRAPHICS_H
 

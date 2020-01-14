@@ -1,3 +1,9 @@
+/**
+* @file vector.h
+* \~english @brief Vector.
+* \~japanese @brief ‰Â•Ï’·”z—ñB
+*/
+
 #ifndef VECTOR_H
 #define VECTOR_H
 

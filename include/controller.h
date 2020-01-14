@@ -1,3 +1,9 @@
+/**
+* @file controller.h
+* \~english @brief Defines functions to read key inputs.
+* \~japanese @brief キー入力取得のための関数定義。
+*/
+
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 

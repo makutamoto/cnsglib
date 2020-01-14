@@ -1,3 +1,9 @@
+/**
+* @file image.h
+* \~english @brief Defines functions to deal with images.
+* \~japanese @brief ‰æ‘œ‚ğˆµ‚¤‚½‚ß‚ÌŠÖ”’è‹`B
+*/
+
 #ifndef IMAGE_H
 #define IMAGE_H
 

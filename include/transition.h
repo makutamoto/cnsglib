@@ -1,3 +1,9 @@
+/**
+* @file transition.h
+* \~english @brief Transition.
+* \~japanese @brief トランジション。
+*/
+
 #ifndef TRANSITION_H
 #define TRANSITION_H
 

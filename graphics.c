@@ -202,7 +202,7 @@ static void projectTriangle(float points[3][4], Image image, const float uv[3][2
 	halfWidth = output->width / 2;
 	halfHeight = output->height / 2;
 	for(i = 0;i < 3;i++) {
-		COPY_ARY(transformed[i], points[i]);
+		copyVec4(transformed[i], points[i]);
 		if(divideByZ) {
 			transformed[i][0] *= transformed[i][3];
 			transformed[i][1] *= transformed[i][3];
@@ -352,25 +352,25 @@ void fillTriangle(Vertex vertices[3], Image image, const float uv[3][2], float z
 			projectTriangle(transformed, image, uv, colors, zBuffer, output);
 			break;
 		case 1:
-			COPY_ARY(triangle[0], transformed[0]);
-			COPY_ARY(triangle[1], transformed[1]);
-			COPY_ARY(triangle[2], transformed[2]);
+			copyVec4(triangle[0], transformed[0]);
+			copyVec4(triangle[1], transformed[1]);
+			copyVec4(triangle[2], transformed[2]);
 			calcIntersectionZ(transformed[clipped[0]], transformed[displayed[0]], 0, triangle[clipped[0]]);
-			COPY_ARY(triangleUV[displayed[0]], uv[displayed[0]]);
-			COPY_ARY(triangleUV[displayed[1]], uv[displayed[1]]);
+			copyVec2(triangleUV[displayed[0]], uv[displayed[0]]);
+			copyVec2(triangleUV[displayed[1]], uv[displayed[1]]);
 			calcUVOnLine(transformed[clipped[0]], transformed[displayed[0]], triangle[clipped[0]], uv[clipped[0]], uv[displayed[0]], triangleUV[clipped[0]]);
 			projectTriangle(triangle, image, triangleUV, colors, zBuffer, output);
-			COPY_ARY(triangle[displayed[0]], triangle[displayed[1]]);
+			copyVec4(triangle[displayed[0]], triangle[displayed[1]]);
 			calcIntersectionZ(transformed[clipped[0]], transformed[displayed[1]], 0, triangle[displayed[1]]);
-			COPY_ARY(triangleUV[displayed[0]], uv[displayed[1]]);
+			copyVec2(triangleUV[displayed[0]], uv[displayed[1]]);
 			calcUVOnLine(transformed[clipped[0]], transformed[displayed[1]], triangle[displayed[1]], uv[clipped[0]], uv[displayed[1]], triangleUV[displayed[1]]);
 			projectTriangle(triangle, image, triangleUV, colors, zBuffer, output);
 			break;
 		case 2:
-			COPY_ARY(triangle[displayed[0]], transformed[displayed[0]]);
+			copyVec4(triangle[displayed[0]], transformed[displayed[0]]);
 			calcIntersectionZ(transformed[clipped[0]], transformed[displayed[0]], 0, triangle[clipped[0]]);
 			calcIntersectionZ(transformed[clipped[1]], transformed[displayed[0]], 0, triangle[clipped[1]]);
-			COPY_ARY(triangleUV[displayed[0]], uv[displayed[0]]);
+			copyVec2(triangleUV[displayed[0]], uv[displayed[0]]);
 			calcUVOnLine(transformed[clipped[0]], transformed[displayed[0]], triangle[clipped[0]], uv[clipped[0]], uv[displayed[0]], triangleUV[clipped[0]]);
 			calcUVOnLine(transformed[clipped[1]], transformed[displayed[0]], triangle[clipped[1]], uv[clipped[1]], uv[displayed[0]], triangleUV[clipped[1]]);
 			projectTriangle(triangle, image, triangleUV, colors, zBuffer, output);
