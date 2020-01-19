@@ -298,4 +298,5 @@ Image genCircle(unsigned int radius, unsigned char color) {
 
 void freeImage(Image image) {
 	free(image.data);
+  memset(&image, 0, sizeof(Image));
 }

@@ -24,6 +24,7 @@ typedef struct {
   float aspect;
   Node *parent;
   Vector nodes;
+  Vector controllerList;
   unsigned char sceneFilterAND;
   unsigned char sceneFilterOR;
   int isRotationDisabled;
@@ -57,6 +58,7 @@ void initCamera(Camera *camera, float x, float y, float z);
 
 Scene initScene(void);
 void addIntervalEventScene(Scene *scene, unsigned int milliseconds, int (*callback)(Scene*));
+Node* getNodeByMask(Vector *nodes, unsigned int mask);
 void drawSceneEx(Scene *scene, Image *output, Camera *camera, Node *replacedNode);
 void updateSceneEx(Scene *scene, float elapsed, Camera *camera);
 void discardScene(Scene *scene);

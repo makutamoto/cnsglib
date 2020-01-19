@@ -43,19 +43,23 @@ Image linearTransitionV(Image imageA, Image imageB, float ratio) {
   return output;
 }
 
-void revoluteTransition(Image *image, float ratio, int inverse, Image *out) {
+void revoluteTransition(Image *out, Image *previous, Image *current, float ratio) {
   int row, col;
   float angle;
   int halfWidth, halfHeight;
-  if(ratio <= 0.0F && !inverse) {
-    *out = initImage(image->width, image->height, BLACK, NULL_COLOR);
-    return;
-  } else if(ratio >= 1.0F && inverse) {
-    copyImage(out, image);
-    return;
+  int inverse;
+  Image *image;
+  if(ratio < 0.5F) {
+    inverse = FALSE;
+    ratio = ratio / 0.5F;
+    image = previous;
+  } else {
+    inverse = TRUE;
+    ratio = (ratio - 0.5F) / 0.5F;
+    image = current;
   }
+  ratio = max(min(ratio, 1.0F), 0.0F);
   angle = PI / 2.0F * ratio;
-  *out = initImageBulk(image->width, image->height, NULL_COLOR);
   halfWidth = image->width / 2;
   halfHeight = image->height / 2;
   for(row = 0;row < (int)out->height;row++) {
@@ -85,18 +89,22 @@ void revoluteTransition(Image *image, float ratio, int inverse, Image *out) {
   }
 }
 
-void stripeTransitionH(Image *image, int n, float ratio, int direction, int inverse, Image *out) {
+void stripeHTransitionBase(Image *out, Image *previous, Image *current, int n, float ratio, int direction) {
   int row, col;
   int stride;
-  stride = ceilf((float)image->width / n);
-  if(ratio <= 0.0F && !inverse) {
-    *out = initImage(image->width, image->height, BLACK, NULL_COLOR);
-    return;
-  } else if(ratio >= 1.0F && inverse) {
-    copyImage(out, image);
-    return;
+  int inverse;
+  Image *image;
+  if(ratio < 0.5F) {
+    inverse = TRUE;
+    ratio = ratio / 0.5F;
+    image = previous;
+  } else {
+    inverse = FALSE;
+    ratio = (ratio - 0.5F) / 0.5F;
+    image = current;
   }
-  *out = initImageBulk(image->width, image->height, NULL_COLOR);
+  stride = ceilf((float)image->width / n);
+  ratio = max(min(ratio, 1.0F), 0.0F);
   for(row = 0;row < (int)out->height;row++) {
     for(col = 0;col < (int)out->width;col++) {
       long index = row * image->width + col;
@@ -109,18 +117,22 @@ void stripeTransitionH(Image *image, int n, float ratio, int direction, int inve
   }
 }
 
-void stripeTransitionV(Image *image, int n, float ratio, int direction, int inverse, Image *out) {
+void stripeVTransitionBase(Image *out, Image *previous, Image *current, int n, float ratio, int direction) {
   int row, col;
   int stride;
-  stride = ceilf((float)image->height / n);
-  if(ratio <= 0.0F && !inverse) {
-    *out = initImage(image->width, image->height, BLACK, NULL_COLOR);
-    return;
-  } else if(ratio >= 1.0F && inverse) {
-    copyImage(out, image);
-    return;
+  int inverse;
+  Image *image;
+  if(ratio < 0.5F) {
+    inverse = TRUE;
+    ratio = ratio / 0.5F;
+    image = previous;
+  } else {
+    inverse = FALSE;
+    ratio = (ratio - 0.5F) / 0.5F;
+    image = current;
   }
-  *out = initImageBulk(image->width, image->height, NULL_COLOR);
+  stride = ceilf((float)image->height / n);
+  ratio = max(min(ratio, 1.0F), 0.0F);
   for(row = 0;row < (int)out->height;row++) {
     for(col = 0;col < (int)out->width;col++) {
       long index = row * image->width + col;

@@ -41,6 +41,16 @@ void addIntervalEventScene(Scene *scene, unsigned int milliseconds, int (*callba
   push(&scene->intervalEvents, interval);
 }
 
+Node* getNodeByMask(Vector *nodes, unsigned int mask) {
+  VectorIter iter;
+  CollisionInfo *info;
+  iter = initVectorIter(nodes);
+  for(info = nextDataIter(&iter);info;info = nextDataIter(&iter)) {
+    if(info->target->collisionMaskActive & mask) return info->target;
+  }
+  return NULL;
+}
+
 void drawSceneEx(Scene *scene, Image *output, Camera *camera, Node *replacedNode) {
   Node *node;
   float lookAt[4][4];

@@ -18,6 +18,7 @@
 #include "./transition.h"
 #include "./triangle.h"
 #include "./sound.h"
+#include "./manager.h"
 
 #ifndef __BORLANDC__
 #pragma comment(lib, "Winmm.lib")
@@ -26,6 +27,7 @@
 void initCNSG(int argc, char *argv[], unsigned int width, unsigned int height);
 void deinitCNSG(void);
 float elapsedTime(LARGE_INTEGER start);
-void gameLoop(unsigned int fps, int (*loop)(float, Image*, int));
+int getSleepFlag(void);
+void gameLoop(unsigned int fps);
 
 #endif
