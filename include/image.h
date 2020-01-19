@@ -46,7 +46,7 @@ void copyImage(Image *dest, Image *src);
 Image loadBitmapEx(char *fileName, unsigned char transparent, int allowNotFound);
 void drawRect(Image *image, int x, int y, int width, int height, unsigned char color);
 Image genCircle(unsigned int rad, unsigned char color);
-void freeImage(Image image);
+void freeImage(Image *image);
 
 FontSJIS initFontSJIS(Image font0201, Image font0208, unsigned int width0201, unsigned int width0208, unsigned int height);
 BOOL drawCharSJIS(Image target, FontSJIS font, unsigned int x, unsigned int y, char *character);

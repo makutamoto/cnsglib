@@ -152,7 +152,7 @@ BOOL drawCharSJIS(Image target, FontSJIS font, unsigned int x, unsigned int y, c
 		cropImage(&image, &font.font0201, fontx, fonty);
 	}
 	pasteImage(target, image, x, y);
-	freeImage(image);
+	freeImage(&image);
 
 	return ismultibyte;
 }
@@ -260,7 +260,7 @@ void drawRect(Image *image, int x, int y, int width, int height, unsigned char c
 	Image rect;
   rect = initImage(width, height, color, NULL_COLOR);
   pasteImage(*image, rect, x, y);
-  freeImage(rect);
+  freeImage(&rect);
 }
 
 Image genCircle(unsigned int radius, unsigned char color) {
@@ -296,7 +296,7 @@ Image genCircle(unsigned int radius, unsigned char color) {
 	return image;
 }
 
-void freeImage(Image image) {
-	free(image.data);
-  memset(&image, 0, sizeof(Image));
+void freeImage(Image *image) {
+	free(image->data);
+  memset(image, 0, sizeof(Image));
 }

@@ -20,6 +20,14 @@ void setCurrentSceneEx(Scene *scene, Camera *camera, void (*transition)(Image*, 
   transitionRatio = 0.0F;
 }
 
+Scene* getCurrentScene(void) {
+  return currentScene;
+}
+
+Camera* getCurrentCamera(void) {
+  return currentCamera;
+}
+
 int drawCurrentScene(Image *image, float elapsed) {
   if(currentScene) {
     drawSceneEx(currentScene, image, currentCamera, NULL);
@@ -28,10 +36,10 @@ int drawCurrentScene(Image *image, float elapsed) {
       copyImage(&currentImage, image);
       transitionFunc(image, &previousImage, &currentImage, transitionRatio);
       transitionRatio += transitionSpeed * elapsed;
-      freeImage(currentImage);
+      freeImage(&currentImage);
       return FALSE;
     } else {
-      if(previousImage.width != 0) freeImage(previousImage);
+      if(previousImage.width != 0) freeImage(&previousImage);
       copyImage(&previousImage, image);
     }
     return TRUE;

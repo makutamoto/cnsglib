@@ -95,6 +95,15 @@ void addNodeChild(Node *parent, Node *child) {
   child->parent = parent;
 }
 
+void freeNodeIntervals(Node *node) {
+  IntervalEventNode *interval;
+  interval = pop(&node->intervalEvents);
+  while(interval) {
+    if(interval->data) free(interval->data);
+    interval = pop(&node->intervalEvents);
+  }
+}
+
 void discardNode(Node *node) {
   if(node->parent) removeByData(&node->parent->children, node);
   clearVector(&node->children);
@@ -213,11 +222,6 @@ float (*getWorldTransfomration(Node *node, float out[4][4]))[4] {
     current = current->parent;
   }
   return out;
-}
-
-int testCollision2d(Node a, Node b) {
-  return (a.aabb[0][0] <= b.aabb[0][1] && a.aabb[0][1] >= b.aabb[0][0]) &&
-         (a.aabb[1][0] <= b.aabb[1][1] && a.aabb[1][1] >= b.aabb[1][0]);
 }
 
 int testCollision(Node a, Node b) {

@@ -14,13 +14,13 @@ void initSound(int argc, char *argv[]) {
   if(argc != 1) {
     if(argc == 2) {
       PlaySound(TEXT(argv[1]), NULL, SND_SYNC | SND_FILENAME);
+      ExitProcess(0);
     } else if(argc == 3 && strcmp(argv[1], "LOOP") == 0) {
       PlaySound(TEXT(argv[2]), NULL, SND_LOOP | SND_ASYNC | SND_FILENAME);
     } else {
       ExitProcess(0);
     }
     while(TRUE) Sleep(4294967295);
-    ExitProcess(0);
   } else {
     strcat_s(name, sizeof(name), argv[0]);
     strcat_s(name, sizeof(name), " ");

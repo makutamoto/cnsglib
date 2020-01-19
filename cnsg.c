@@ -23,7 +23,6 @@ void initCNSG(int argc, char *argv[], unsigned int width, unsigned int height) {
 }
 
 void deinitCNSG(void) {
-  freeImage(screenImage);
   deinitInput();
   deinitSound();
   initialized = FALSE;
@@ -58,4 +57,6 @@ void gameLoop(unsigned int fps) {
 		flushBuffer(&screenImage);
 		while(elapsedTime(previousClock) < delay);
 	}
+  if(screenImage.width != 0) freeImage(&screenImage);
+  deinitSound();
 }

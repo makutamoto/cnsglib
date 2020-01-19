@@ -211,9 +211,13 @@ static int is2dCollided(Scene *scene, Camera *camera, Node *node, Node *collisio
   tempScene.camera.target[1] = tempScene.camera.position[1];
   drawSceneEx(&tempScene, &nodeImage, &tempScene.camera, node);
   drawSceneEx(&tempScene, &targetImage, &tempScene.camera, collisionTarget);
-  if(isImageOverlap(&nodeImage, &targetImage)) return TRUE;
-  freeImage(nodeImage);
-  freeImage(targetImage);
+  if(isImageOverlap(&nodeImage, &targetImage)) {
+    freeImage(&nodeImage);
+    freeImage(&targetImage);
+    return TRUE;
+  }
+  freeImage(&nodeImage);
+  freeImage(&targetImage);
   return FALSE;
 }
 
@@ -289,24 +293,24 @@ void updateSceneEx(Scene *scene, float elapsed, Camera *camera) {
         unsigned int flagsA = node->collisionMaskPassive & collisionTarget->collisionMaskActive;
         unsigned int flagsB = node->collisionMaskActive & collisionTarget->collisionMaskPassive;
         if(flagsA | flagsB) {
-          if(node->physicsMode == PHYSICS_2D && collisionTarget->physicsMode == PHYSICS_2D) {
-            if(testCollision2d(*node, *collisionTarget) && is2dCollided(scene, camera, node, collisionTarget)) {
-              CollisionInfo userInfo = { 0 };
-              if(!(node->isThrough || collisionTarget->isThrough)) {
-                node->position[0] = node->previousPosition[0];
-                node->position[1] = node->previousPosition[1];
-                collisionTarget->position[0] = collisionTarget->previousPosition[0];
-                collisionTarget->position[1] = collisionTarget->previousPosition[1];
+          if(testCollision(*node, *collisionTarget)) {
+            if(node->physicsMode == PHYSICS_2D && collisionTarget->physicsMode == PHYSICS_2D) {
+              if(is2dCollided(scene, camera, node, collisionTarget)) {
+                CollisionInfo userInfo = { 0 };
+                if(!(node->isThrough || collisionTarget->isThrough)) {
+                  node->position[0] = node->previousPosition[0];
+                  node->position[1] = node->previousPosition[1];
+                  collisionTarget->position[0] = collisionTarget->previousPosition[0];
+                  collisionTarget->position[1] = collisionTarget->previousPosition[1];
+                }
+                userInfo.target = collisionTarget;
+                pushAlloc(&node->collisionTargets, sizeof(CollisionInfo), &userInfo);
+                userInfo.target = node;
+                pushAlloc(&collisionTarget->collisionTargets, sizeof(CollisionInfo), &userInfo);
+                node->collisionFlags |= flagsA;
+                collisionTarget->collisionFlags |= flagsB;
               }
-              userInfo.target = collisionTarget;
-              pushAlloc(&node->collisionTargets, sizeof(CollisionInfo), &userInfo);
-              userInfo.target = node;
-              pushAlloc(&collisionTarget->collisionTargets, sizeof(CollisionInfo), &userInfo);
-              node->collisionFlags |= flagsA;
-              collisionTarget->collisionFlags |= flagsB;
-            }
-          } else {
-            if(testCollision(*node, *collisionTarget)) {
+            } else {
               Vector infoA, infoB;
               if(testCollisionPolygonPolygon(*node, *collisionTarget, &infoA, &infoB)) {
                 CollisionInfo userInfo;

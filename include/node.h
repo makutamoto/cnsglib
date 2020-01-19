@@ -101,6 +101,7 @@ Node initNodeText(const char *id, float px, float py, Align alignX, Align alignY
 NodeIter initNodeIter(Vector *layer);
 Node* nextNode(NodeIter *iter);
 void addNodeChild(Node *parent, Node *child);
+void freeNodeIntervals(Node *node);
 void discardNode(Node *node);
 
 void drawNode(Node *node, float zBuffer[], Node *replacedNode, unsigned char filterAND, unsigned char filterOR, Image *output);
@@ -109,7 +110,6 @@ float (*getNodeTransformation(Node node, float out[4][4]))[4];
 float (*getWorldTransfomration(Node *node, float out[4][4]))[4];
 
 CollisionInfoNode2Node initCollisionInfoNode2Node(Node *nodeA, Node *nodeB, float triangle[3][3], unsigned long normalIndex, unsigned long *uvIndex[3], float contacts[2][3], float depth);
-int testCollision2d(Node a, Node b);
 int testCollision(Node a, Node b);
 int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBOut);
 void addIntervalEventNode(Node *node, unsigned int milliseconds, int (*callback)(Node*, void*), void *data);
