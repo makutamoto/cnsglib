@@ -47,9 +47,14 @@ int drawCurrentScene(Image *image, float elapsed) {
   return FALSE;
 }
 
+void updateCurrentController(int update) {
+  if(currentScene) {
+    updateController(&currentCamera->controllerList, update);
+  }
+}
+
 void updateCurrentScene(float elapsed) {
   if(currentScene) {
-    updateController(&currentCamera->controllerList);
     updateSceneEx(currentScene, elapsed / 2.0F, currentCamera);
     updateSceneEx(currentScene, elapsed / 2.0F, currentCamera);
   }

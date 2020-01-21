@@ -39,20 +39,20 @@ void initControllerDataCrossEx(Vector *list, ControllerData *events[4], WORD up,
   events[3] = initControllerDataEx(list, right, 1.0F, 0.0F, &dest[0]);
 }
 
-static void runController(KEY_EVENT_RECORD *keyEvent, ControllerData *controllerEvent) {
+static void runController(KEY_EVENT_RECORD *keyEvent, ControllerData *controllerEvent, int update) {
   if(keyEvent->wVirtualKeyCode == controllerEvent->key) {
     controllerEvent->state = keyEvent->bKeyDown;
     if(keyEvent->bKeyDown) {
       if(controllerEvent->dest) *controllerEvent->dest = controllerEvent->valueDown;
-      if(controllerEvent->downEvent) controllerEvent->downEvent();
+      if(update && controllerEvent->downEvent) controllerEvent->downEvent();
     } else {
       if(controllerEvent->dest) *controllerEvent->dest = controllerEvent->valueUp;
-      if(controllerEvent->upEvent) controllerEvent->upEvent();
+      if(update && controllerEvent->upEvent) controllerEvent->upEvent();
     }
   }
 }
 
-void updateController(Vector *list) {
+void updateController(Vector *list, int update) {
   int i;
 	DWORD nofEvents;
 	KEY_EVENT_RECORD *keyEvent;
@@ -64,8 +64,8 @@ void updateController(Vector *list) {
 		switch(inputRecords[i].EventType) {
 			case KEY_EVENT:
 			  keyEvent = &inputRecords[i].Event.KeyEvent;
-        if(list) iterf(list, &controllerEvent) runController(keyEvent, controllerEvent);
-        iterf(&controllerList, &controllerEvent) runController(keyEvent, controllerEvent);
+        if(list) iterf(list, &controllerEvent) runController(keyEvent, controllerEvent, update);
+        iterf(&controllerList, &controllerEvent) runController(keyEvent, controllerEvent, update);
 			  break;
 			default: break;
 		}

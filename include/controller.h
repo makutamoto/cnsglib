@@ -29,7 +29,7 @@ void initInput(void);
 ControllerData* initControllerDataEx(Vector *list, WORD key, float down, float up, float *dest);
 ControllerData* initControllerEventEx(Vector *list, WORD key, void (*downEvent)(void), void (*upEvent)(void));
 void initControllerDataCrossEx(Vector *list, ControllerData *events[4], WORD up, WORD left, WORD down, WORD right, float dest[2]);
-void updateController(Vector *list);
+void updateController(Vector *list, int update);
 void deinitInput(void);
 
 #endif

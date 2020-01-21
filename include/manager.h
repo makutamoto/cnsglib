@@ -7,6 +7,7 @@ void setCurrentSceneEx(Scene *scene, Camera *camera, void (*transition)(Image*, 
 Scene* getCurrentScene(void);
 Camera* getCurrentCamera(void);
 int drawCurrentScene(Image *image, float elapsed);
+void updateCurrentController(int update);
 void updateCurrentScene(float elapsed);
 
 #endif

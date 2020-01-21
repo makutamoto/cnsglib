@@ -53,7 +53,12 @@ void gameLoop(unsigned int fps) {
       sleep = TRUE;
     }
 		QueryPerformanceCounter(&previousClock);
-    if(drawCurrentScene(&screenImage, elapsed)) updateCurrentScene(elapsed);
+    if(drawCurrentScene(&screenImage, elapsed)) {
+      updateCurrentController(TRUE);
+      updateCurrentScene(elapsed);
+    } else {
+      updateCurrentController(FALSE);
+    }
 		flushBuffer(&screenImage);
 		while(elapsedTime(previousClock) < delay);
 	}
