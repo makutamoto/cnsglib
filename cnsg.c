@@ -59,4 +59,5 @@ void gameLoop(unsigned int fps) {
 	}
   if(screenImage.width != 0) freeImage(&screenImage);
   deinitSound();
+  system("cls");
 }

@@ -38,8 +38,7 @@ void initScreen(short width, short height) {
 	#endif
 	sprintf(buffer, "mode %d, %d", 2 * width, height);
 	system(buffer);
-	screen = CreateConsoleScreenBuffer(GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
-	SetConsoleActiveScreenBuffer(screen);
+	screen = GetStdHandle(STD_OUTPUT_HANDLE);
 	#ifndef __BORLANDC__
 	GetCurrentConsoleFontEx(screen, FALSE, &font);
 	font.dwFontSize.X = 1;
