@@ -15,6 +15,7 @@ typedef struct VectorItem {
 
 typedef struct {
 	size_t length;
+	int modifiedCounter;
 	VectorItem *firstItem;
 	VectorItem *currentItem;
 	VectorItem *lastItem;
@@ -24,8 +25,8 @@ typedef struct {
 
 typedef struct {
 	Vector *vector;
-	int isNull;
-	VectorItem currentItem;
+	int modifiedCounter;
+	VectorItem *currentItem;
 } VectorIter;
 
 #define iterf(vector, data) for(resetIteration((vector));nextIter((vector), (void**)(data));)
