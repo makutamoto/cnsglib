@@ -223,6 +223,7 @@ static int is2dCollided(Scene *scene, Camera *camera, Node *node, Node *collisio
 
 static void runNodeBehaviour(Node *node, float elapsed) {
   IntervalEventNode *interval;
+  if(!node->isActive) return;
   clearVec3(node->force);
   clearVec3(node->torque);
   if(node->behaviour != NULL) {
@@ -260,6 +261,7 @@ void updateSceneEx(Scene *scene, float elapsed, Camera *camera) {
     float tempMat3[2][3][3];
     float orientation[3][3];
     CollisionInfo *info;
+    if(!node->isActive) continue;
     node->previousPosition[0] = node->position[0];
     node->previousPosition[1] = node->position[1];
     if(node->collisionShape.mass == 0.0F) continue;
@@ -285,6 +287,7 @@ void updateSceneEx(Scene *scene, float elapsed, Camera *camera) {
     if(node->collisionMaskActive || node->collisionMaskPassive) {
       Node *collisionTarget;
       NodeIter targetIter;
+      if(!node->isActive) continue;
       targetIter.iterStack = initVector();
       concatVectorAlloc(&targetIter.iterStack, &iter.iterStack, sizeof(VectorIter));
       targetIter.currentIter = iter.currentIter;
@@ -292,6 +295,7 @@ void updateSceneEx(Scene *scene, float elapsed, Camera *camera) {
       for(collisionTarget = nextNode(&targetIter);collisionTarget != NULL;collisionTarget = nextNode(&targetIter)) {
         unsigned int flagsA = node->collisionMaskPassive & collisionTarget->collisionMaskActive;
         unsigned int flagsB = node->collisionMaskActive & collisionTarget->collisionMaskPassive;
+        if(!collisionTarget->isActive) continue;
         if(flagsA | flagsB) {
           if(testCollision(*node, *collisionTarget)) {
             if(node->physicsMode == PHYSICS_2D && collisionTarget->physicsMode == PHYSICS_2D) {

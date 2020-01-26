@@ -68,6 +68,7 @@ typedef struct Node {
 	PhysicsMode physicsMode;
 	int isInterface;
 	Align interfaceAlign[2];
+	int isActive;
 	int isVisible;
 	int isThrough;
 	int useFakeZ;

@@ -24,6 +24,7 @@ Node initNode(const char *id, Image image) {
 	node.texture = image;
   node.colorFilterAND = 0x0F;
   node.children = initVector();
+  node.isActive = TRUE;
   node.isVisible = TRUE;
   genIdentityMat4(node.lastTransformation);
   return node;
@@ -117,6 +118,7 @@ void discardSprite(Node *node) {
 void drawNode(Node *node, float zBuffer[], Node *replacedNode, unsigned char filterAND, unsigned char filterOR, Image *output) {
   Node *child;
   unsigned int halfWidth, halfHeight;
+  if(!node->isActive) return;
   halfWidth = output->width / 2;
   halfHeight = output->height / 2;
 	pushTransformation();
