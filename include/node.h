@@ -103,6 +103,7 @@ Node* nextNode(NodeIter *iter);
 void addNodeChild(Node *parent, Node *child);
 void freeNodeIntervals(Node *node);
 void discardNode(Node *node);
+void discardSprite(Node *node);
 
 void drawNode(Node *node, float zBuffer[], Node *replacedNode, unsigned char filterAND, unsigned char filterOR, Image *output);
 void applyForce(Node *node, float force[3], int mask, int rotation);

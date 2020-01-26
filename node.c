@@ -109,6 +109,11 @@ void discardNode(Node *node) {
   clearVector(&node->children);
 }
 
+void discardSprite(Node *node) {
+  discardShape(node->shape);
+  discardNode(node);
+}
+
 void drawNode(Node *node, float zBuffer[], Node *replacedNode, unsigned char filterAND, unsigned char filterOR, Image *output) {
   Node *child;
   unsigned int halfWidth, halfHeight;
