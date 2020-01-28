@@ -1,3 +1,9 @@
+/**
+* @file colors.h
+* \~english @brief Defines colors for Command Prompt.
+* \~japanese @brief コマンドプロンプトで使える色を定義。
+*/
+
 #ifndef COLOR_H
 #define COLOR_H
 

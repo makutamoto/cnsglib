@@ -1,3 +1,9 @@
+/**
+* @file triangle.h
+* \~english @brief Triangle.
+* \~japanese @brief éOäpå`ÅB
+*/
+
 #ifndef TRIANGLE_H
 #define TRIANGLE_H
 

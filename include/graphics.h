@@ -1,3 +1,9 @@
+/**
+* @file graphics.h
+* \~english @brief Defines functions to render graphics.
+* \~japanese @brief グラフィック系の関数定義。
+*/
+
 #ifndef GRAPHICS_H
 #define GRAPHICS_H
 
@@ -6,13 +12,17 @@
 #include "./vector.h"
 #include "./image.h"
 
-typedef struct _Vertex {
+typedef struct {
 	float components[4];
 	unsigned char color;
 } Vertex;
 
 void initScreen(short width, short height);
+void setDivideByZ(int value);
+void setFakeZ(int use, float val);
 void setZNear(float value);
+void setColorFilterAND(unsigned char filter);
+void setColorFilterOR(unsigned char filter);
 float *initZBuffer(unsigned int width, unsigned int height);
 void flushBuffer(Image *image);
 

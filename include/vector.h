@@ -1,27 +1,37 @@
+/**
+* @file vector.h
+* \~english @brief Vector.
+* \~japanese @brief â¬ïœí∑îzóÒÅB
+*/
+
 #ifndef VECTOR_H
 #define VECTOR_H
 
-typedef struct _Vector {
-	size_t length;
-	struct _VectorItem *firstItem;
-	struct _VectorItem *currentItem;
-	struct _VectorItem *lastItem;
-	struct _VectorItem *cacheItem;
-	size_t cacheIndex;
-} Vector;
-
-typedef struct _VectorItem {
-	struct _VectorItem *previousItem;
-	struct _VectorItem *nextItem;
+typedef struct VectorItem {
+	struct VectorItem *previousItem;
+	struct VectorItem *nextItem;
 	void *data;
 } VectorItem;
 
 typedef struct {
+	size_t length;
+	int modifiedCounter;
+	VectorItem *firstItem;
+	VectorItem *currentItem;
+	VectorItem *lastItem;
+	VectorItem *cacheItem;
+	size_t cacheIndex;
+} Vector;
+
+typedef struct {
 	Vector *vector;
+	int modifiedCounter;
 	VectorItem *currentItem;
 } VectorIter;
 
 #define iterf(vector, data) for(resetIteration((vector));nextIter((vector), (void**)(data));)
+
+#define pushAllocStr(vector, str) pushAlloc((vector), sizeof((str)), (str))
 
 Vector initVector(void);
 void concatVectorAlloc(Vector *dest, Vector *src, size_t size);

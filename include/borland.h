@@ -1,3 +1,9 @@
+/**
+* @file borland.h
+* \~english @brief Defines functions and macros for bcc55 compatibility.
+* \~japanese @brief BCC55å›ä∑ÇÃÇΩÇﬂÇÃíËã`ÅB
+*/
+
 #ifdef __BORLANDC__
 #ifndef BORLAND_H
 #define BORLAND_H
@@ -24,6 +30,7 @@ int fopen_s(FILE** pFile, const char *filename, const char *mode);
 
 #define memcpy_s(dest, destSize, src, count) memcpy(dest, src, count)
 #define strcat_s(dest, size, src) strcat(dest, src)
+#define strcpy_s(dest, size, src) strcpy(dest, src)
 
 #endif
 #endif

@@ -15,11 +15,16 @@
 
 static HANDLE screen;
 
+static int divideByZ = TRUE;
+static int useFakeZ = FALSE;
+static float fakeZ;
 static float zNearOver;
 static float camera[4][4];
 static float transformation[4][4];
 static Vector matrixStore;
 static unsigned int currentStore = 0;
+static unsigned char colorFilterAND = 0x0F;
+static unsigned char colorFilterOR;
 
 int aabbClear = TRUE;
 static float aabbTemp[3][2];
@@ -27,11 +32,13 @@ static float aabbTemp[3][2];
 void initScreen(short width, short height) {
 	CONSOLE_CURSOR_INFO info = { 1, FALSE };
 	COORD bufferSize;
+	char buffer[32];
 	#ifndef __BORLANDC__
 	CONSOLE_FONT_INFOEX font = { sizeof(CONSOLE_FONT_INFOEX) };
 	#endif
-	screen = CreateConsoleScreenBuffer(GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
-	SetConsoleActiveScreenBuffer(screen);
+	sprintf(buffer, "mode %d, %d", 2 * width, height);
+	system(buffer);
+	screen = GetStdHandle(STD_OUTPUT_HANDLE);
 	#ifndef __BORLANDC__
 	GetCurrentConsoleFontEx(screen, FALSE, &font);
 	font.dwFontSize.X = 1;
@@ -46,8 +53,25 @@ void initScreen(short width, short height) {
 	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 }
 
+void setDivideByZ(int value) {
+	divideByZ = value;
+}
+
+void setFakeZ(int use, float val) {
+	useFakeZ = use;
+	fakeZ = val;
+}
+
 void setZNear(float value) {
 	zNearOver = 1.0F / value;
+}
+
+void setColorFilterAND(unsigned char filter) {
+	colorFilterAND = filter;
+}
+
+void setColorFilterOR(unsigned char filter) {
+	colorFilterOR = filter;
 }
 
 float *initZBuffer(unsigned int width, unsigned int height) {
@@ -122,6 +146,10 @@ void setCameraMat4(float mat[4][4]) {
 
 void clearCameraMat4(void) {
 	genIdentityMat4(camera);
+	camera[2][2] = 0.0F;
+	camera[2][3] = 1.0F;
+	camera[3][2] = -1.0F;
+	camera[3][3] = 0.0F;
 }
 
 void translateTransformation(float dx, float dy, float dz) {
@@ -173,9 +201,11 @@ static void projectTriangle(float points[3][4], Image image, const float uv[3][2
 	halfWidth = output->width / 2;
 	halfHeight = output->height / 2;
 	for(i = 0;i < 3;i++) {
-		COPY_ARY(transformed[i], points[i]);
-		transformed[i][0] *= transformed[i][3];
-		transformed[i][1] *= transformed[i][3];
+		copyVec4(transformed[i], points[i]);
+		if(divideByZ) {
+			transformed[i][0] *= transformed[i][3];
+			transformed[i][1] *= transformed[i][3];
+		}
 		transformed[i][2] *= transformed[i][3];
 		if(transformed[i][2] > 1.0F) tooFar += 1;
 		transformed[i][2] *= transformed[i][3];
@@ -217,20 +247,28 @@ static void projectTriangle(float points[3][4], Image image, const float uv[3][2
 				weights[2] /= area;
 				depth = 1.0F / (transformed[0][3] * weights[0] + transformed[1][3] * weights[1] + transformed[2][3] * weights[2]);
 				z = depth * (transformed[0][2] * weights[0] + transformed[1][2] * weights[1] + transformed[2][2] * weights[2]);
-				if(z <= 1.0F && depth < zBuffer[index]) {
+				if(z <= 1.0F && (useFakeZ ? fakeZ : depth) < zBuffer[index]) {
 					if(image.data == NULL) {
 						color = (unsigned char)roundf(depth * (vertexColors[0] * weights[0] + vertexColors[1] * weights[1] + vertexColors[2] * weights[2]));
 						if(color != NULL_COLOR) {
 							output->data[index] = color;
-							zBuffer[index] = depth;
+							if(useFakeZ) {
+								zBuffer[index] = fakeZ;
+							} else {
+								zBuffer[index] = depth;
+							}
 						}
 					} else {
 						dataCoords[0] = depth * (textures[0][0] * weights[0] + textures[1][0] * weights[1] + textures[2][0] * weights[2]);
 						dataCoords[1] =	depth * (textures[0][1] * weights[0] + textures[1][1] * weights[1] + textures[2][1] * weights[2]);
 						color = image.data[image.width * min((unsigned int)(floorf(image.height * dataCoords[1])), image.height - 1) + min((unsigned int)(floorf(image.width * dataCoords[0])), image.width - 1)];
 						if(color != image.transparent) {
-							output->data[index] = color;
-							zBuffer[index] = depth;
+							output->data[index] = (color & colorFilterAND) | colorFilterOR;
+							if(useFakeZ) {
+								zBuffer[index] = fakeZ;
+							} else {
+								zBuffer[index] = depth;
+							}
 						}
 					}
 				}
@@ -313,25 +351,25 @@ void fillTriangle(Vertex vertices[3], Image image, const float uv[3][2], float z
 			projectTriangle(transformed, image, uv, colors, zBuffer, output);
 			break;
 		case 1:
-			COPY_ARY(triangle[0], transformed[0]);
-			COPY_ARY(triangle[1], transformed[1]);
-			COPY_ARY(triangle[2], transformed[2]);
+			copyVec4(triangle[0], transformed[0]);
+			copyVec4(triangle[1], transformed[1]);
+			copyVec4(triangle[2], transformed[2]);
 			calcIntersectionZ(transformed[clipped[0]], transformed[displayed[0]], 0, triangle[clipped[0]]);
-			COPY_ARY(triangleUV[displayed[0]], uv[displayed[0]]);
-			COPY_ARY(triangleUV[displayed[1]], uv[displayed[1]]);
+			copyVec2(triangleUV[displayed[0]], uv[displayed[0]]);
+			copyVec2(triangleUV[displayed[1]], uv[displayed[1]]);
 			calcUVOnLine(transformed[clipped[0]], transformed[displayed[0]], triangle[clipped[0]], uv[clipped[0]], uv[displayed[0]], triangleUV[clipped[0]]);
 			projectTriangle(triangle, image, triangleUV, colors, zBuffer, output);
-			COPY_ARY(triangle[displayed[0]], triangle[displayed[1]]);
+			copyVec4(triangle[displayed[0]], triangle[displayed[1]]);
 			calcIntersectionZ(transformed[clipped[0]], transformed[displayed[1]], 0, triangle[displayed[1]]);
-			COPY_ARY(triangleUV[displayed[0]], uv[displayed[1]]);
+			copyVec2(triangleUV[displayed[0]], uv[displayed[1]]);
 			calcUVOnLine(transformed[clipped[0]], transformed[displayed[1]], triangle[displayed[1]], uv[clipped[0]], uv[displayed[1]], triangleUV[displayed[1]]);
 			projectTriangle(triangle, image, triangleUV, colors, zBuffer, output);
 			break;
 		case 2:
-			COPY_ARY(triangle[displayed[0]], transformed[displayed[0]]);
+			copyVec4(triangle[displayed[0]], transformed[displayed[0]]);
 			calcIntersectionZ(transformed[clipped[0]], transformed[displayed[0]], 0, triangle[clipped[0]]);
 			calcIntersectionZ(transformed[clipped[1]], transformed[displayed[0]], 0, triangle[clipped[1]]);
-			COPY_ARY(triangleUV[displayed[0]], uv[displayed[0]]);
+			copyVec2(triangleUV[displayed[0]], uv[displayed[0]]);
 			calcUVOnLine(transformed[clipped[0]], transformed[displayed[0]], triangle[clipped[0]], uv[clipped[0]], uv[displayed[0]], triangleUV[clipped[0]]);
 			calcUVOnLine(transformed[clipped[1]], transformed[displayed[0]], triangle[clipped[1]], uv[clipped[1]], uv[displayed[0]], triangleUV[clipped[1]]);
 			projectTriangle(triangle, image, triangleUV, colors, zBuffer, output);

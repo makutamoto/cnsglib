@@ -8,23 +8,20 @@
 #include "./include/vector.h"
 #include "./include/matrix.h"
 #include "./include/graphics.h"
+#include "./include/colors.h"
 
 #define VELOCITY_LIMIT 200.0F * 10000.0F / 3600.0F
 
-Camera initCamera(float x, float y, float z, float aspect) {
-  Camera camera;
-  memset(&camera, 0, sizeof(Camera));
-  camera.position[0] = x;
-  camera.position[1] = y;
-  camera.position[2] = z;
-  camera.worldUp[0] = 0.0F;
-  camera.worldUp[1] = 1.0F;
-  camera.worldUp[2] = 0.0F;
-  camera.fov = PI / 3.0F * 2.0F;
-  camera.nearLimit = 10.0F;
-  camera.farLimit = 1000.0F;
-  camera.aspect = aspect;
-  return camera;
+void initCamera(Camera *camera, float x, float y, float z) {
+  memset(camera, 0, sizeof(Camera));
+  camera->position[0] = x;
+  camera->position[1] = y;
+  camera->position[2] = z;
+  camera->worldUp[1] = 1.0F;
+  camera->fov = PI / 3.0F * 2.0F;
+  camera->nearLimit = 10.0F;
+  camera->farLimit = 1000.0F;
+  camera->sceneFilterAND = 0x0F;
 }
 
 Scene initScene(void) {
@@ -32,11 +29,11 @@ Scene initScene(void) {
   memset(&scene, 0, sizeof(Scene));
   scene.acceleration[1] = -98.0F;
   scene.nodes = initVector();
-  scene.camera = initCamera(0.0F, 0.0F, 0.0F, 0.0F);
+  initCamera(&scene.camera, 0.0F, 0.0F, 0.0F);
   return scene;
 }
 
-void addIntervalEventScene(Scene *scene, unsigned int milliseconds, void (*callback)(Scene*)) {
+void addIntervalEventScene(Scene *scene, unsigned int milliseconds, int (*callback)(Scene*)) {
   IntervalEventScene *interval = malloc(sizeof(IntervalEventScene));
   interval->begin = clock();
   interval->interval = milliseconds * CLOCKS_PER_SEC / 1000;
@@ -44,7 +41,17 @@ void addIntervalEventScene(Scene *scene, unsigned int milliseconds, void (*callb
   push(&scene->intervalEvents, interval);
 }
 
-void drawSceneWithCamera(Scene *scene, Image *output, Camera *camera) {
+Node* getNodeByMask(Vector *nodes, unsigned int mask) {
+  VectorIter iter;
+  CollisionInfo *info;
+  iter = initVectorIter(nodes);
+  for(info = nextDataIter(&iter);info;info = nextDataIter(&iter)) {
+    if(info->target->collisionMaskActive & mask) return info->target;
+  }
+  return NULL;
+}
+
+void drawSceneEx(Scene *scene, Image *output, Camera *camera, Node *replacedNode) {
   Node *node;
   float lookAt[4][4];
   float projection[4][4];
@@ -87,12 +94,15 @@ void drawSceneWithCamera(Scene *scene, Image *output, Camera *camera) {
   zBuffer = initZBuffer(output->width, output->height);
   iterf(&scene->nodes, &node) {
     setCameraMat4(cameraMatrix);
-    drawNode(node, zBuffer, output);
+    setDivideByZ(TRUE);
+    drawNode(node, zBuffer, replacedNode, camera->sceneFilterAND, camera->sceneFilterOR, output);
   }
-}
-
-void drawScene(Scene *scene, Image *output) {
-  drawSceneWithCamera(scene, output, &scene->camera);
+  iterf(&camera->nodes, &node) {
+    setCameraMat4(cameraMatrix);
+    setDivideByZ(TRUE);
+    drawNode(node, zBuffer, replacedNode, 0x0F, 0x00, output);
+  }
+  free(zBuffer);
 }
 
 static void impulseNodes(Node *nodeA, Node *nodeB, float normal[3], float point[3]) {
@@ -156,7 +166,7 @@ static void collideNodes(Node *nodeA, Node *nodeB, Vector *info, float staticFri
   float *checkedNormal = NULL;
   Vector checkedNormals = initVector();
   CollisionInfoNode2Node *collisionInfo;
-  if(nodeA->isPhysicsEnabled) {
+  if(nodeA->physicsMode == PHYSICS_3D) {
     iterf(info, &collisionInfo) {
       if(info->firstItem->data == collisionInfo) {
         float tempVec3[1][3];
@@ -181,9 +191,74 @@ static void collideNodes(Node *nodeA, Node *nodeB, Vector *info, float staticFri
   freeVector(&checkedNormals);
 }
 
-void updateScene(Scene *scene, float elapsed) {
+static int is2dCollided(Scene *scene, Camera *camera, Node *node, Node *collisionTarget) {
+  Scene tempScene;
+  Image nodeImage, targetImage;
+  Node *mainNode;
+  nodeImage = initImageBulk(128, 128, NULL_COLOR);
+  targetImage = initImageBulk(128, 128, NULL_COLOR);
+  tempScene = *scene;
+  tempScene.camera = *camera;
+  tempScene.camera.aspect = 0.0F;
+  tempScene.camera.parent = NULL;
+  tempScene.background = WHITE;
+  tempScene.camera.sceneFilterAND = 0x0F;
+  tempScene.camera.sceneFilterOR = 0x00;
+  mainNode = (node->aabb[0][1] > collisionTarget->aabb[0][1] && node->aabb[0][0] < collisionTarget->aabb[0][0]) ? collisionTarget : node;
+  if(mainNode->parent) {
+    float tempVec4[2][4];
+    mulMat4Vec4(mainNode->lastTransformation, convVec3toVec4(mainNode->position, tempVec4[0]), tempVec4[1]);
+    tempScene.camera.position[0] = tempVec4[1][0];
+    tempScene.camera.position[1] = tempVec4[1][1];
+  } else {
+    tempScene.camera.position[0] = mainNode->position[0];
+    tempScene.camera.position[1] = mainNode->position[1];
+  }
+  tempScene.camera.target[0] = tempScene.camera.position[0];
+  tempScene.camera.target[1] = tempScene.camera.position[1];
+  drawSceneEx(&tempScene, &nodeImage, &tempScene.camera, node);
+  drawSceneEx(&tempScene, &targetImage, &tempScene.camera, collisionTarget);
+  if(isImageOverlap(&nodeImage, &targetImage)) {
+    freeImage(&nodeImage);
+    freeImage(&targetImage);
+    return TRUE;
+  }
+  freeImage(&nodeImage);
+  freeImage(&targetImage);
+  return FALSE;
+}
+
+static void runNodeBehaviour(Node *node, float elapsed) {
+  IntervalEventNode *interval;
+  if(!node->isActive) return;
+  clearVec3(node->force);
+  clearVec3(node->torque);
+  if(node->behaviour != NULL) {
+    if(!node->behaviour(node, elapsed)) return;
+  }
+  resetIteration(&node->intervalEvents);
+  interval = nextData(&node->intervalEvents);
+  while(interval) {
+    clock_t current = clock();
+    clock_t diff = current - interval->begin;
+    if(diff < 0) {
+      interval->begin = current;
+    } else {
+      if(interval->interval < (unsigned int)diff) {
+        interval->begin = current;
+        if(!interval->callback(node, interval->data)) {
+          previousData(&node->intervalEvents);
+          removeByData(&node->intervalEvents, interval);
+        }
+      }
+    }
+    interval = nextData(&node->intervalEvents);
+  }
+}
+
+void updateSceneEx(Scene *scene, float elapsed, Camera *camera) {
   Node *node;
-  NodeIter iter;
+  NodeIter iter, cameraIter;
   IntervalEventScene *intervalScene;
   scene->clock += elapsed;
   iter = initNodeIter(&scene->nodes);
@@ -193,11 +268,11 @@ void updateScene(Scene *scene, float elapsed) {
     float tempMat3[2][3][3];
     float orientation[3][3];
     CollisionInfo *info;
+    if(!node->isActive) continue;
+    node->previousPosition[0] = node->position[0];
+    node->previousPosition[1] = node->position[1];
     if(node->collisionShape.mass == 0.0F) continue;
-    if(node->isPhysicsEnabled) {
-      addVec3(node->velocity, mulVec3ByScalar(scene->acceleration, elapsed, temp), node->velocity);
-      // addVec3(node->force, mulVec3ByScalar(scene->acceleration, node->collisionShape.mass, temp), node->force);
-    }
+    if(node->physicsMode == PHYSICS_3D) addVec3(node->force, mulVec3ByScalar(scene->acceleration, node->collisionShape.mass, temp), node->force);
     addVec3(node->position, mulVec3ByScalar(node->velocity, elapsed, temp), node->position);
     genRotationMat4(node->angle[0], node->angle[1], node->angle[2], tempMat4);
     convMat4toMat3(tempMat4, orientation);
@@ -217,10 +292,9 @@ void updateScene(Scene *scene, float elapsed) {
   }
   for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) {
     if(node->collisionMaskActive || node->collisionMaskPassive) {
-      Node nodeTemp;
       Node *collisionTarget;
       NodeIter targetIter;
-      nodeTemp = *node;
+      if(!node->isActive) continue;
       targetIter.iterStack = initVector();
       concatVectorAlloc(&targetIter.iterStack, &iter.iterStack, sizeof(VectorIter));
       targetIter.currentIter = iter.currentIter;
@@ -228,59 +302,55 @@ void updateScene(Scene *scene, float elapsed) {
       for(collisionTarget = nextNode(&targetIter);collisionTarget != NULL;collisionTarget = nextNode(&targetIter)) {
         unsigned int flagsA = node->collisionMaskPassive & collisionTarget->collisionMaskActive;
         unsigned int flagsB = node->collisionMaskActive & collisionTarget->collisionMaskPassive;
+        if(!collisionTarget->isActive) continue;
         if(flagsA | flagsB) {
           if(testCollision(*node, *collisionTarget)) {
-            Vector infoA, infoB;
-            if(testCollisionPolygonPolygon(*node, *collisionTarget, &infoA, &infoB)) {
-              CollisionInfo userInfo;
-              if(!(node->isThrough || collisionTarget->isThrough)) {
-                float staticFriction, dynamicFriction, rollingFriction;
-                staticFriction = sqrtf(node->collisionShape.staticFriction * node->collisionShape.staticFriction + collisionTarget->collisionShape.staticFriction * collisionTarget->collisionShape.staticFriction);
-                dynamicFriction = sqrtf(node->collisionShape.dynamicFriction * node->collisionShape.dynamicFriction + collisionTarget->collisionShape.dynamicFriction * collisionTarget->collisionShape.dynamicFriction);
-                rollingFriction = sqrtf(node->collisionShape.rollingFriction * node->collisionShape.rollingFriction + collisionTarget->collisionShape.rollingFriction * collisionTarget->collisionShape.rollingFriction);
-                collideNodes(node, collisionTarget, &infoA, staticFriction, dynamicFriction, rollingFriction, elapsed);
-                collideNodes(collisionTarget, node, &infoB, staticFriction, dynamicFriction, rollingFriction, elapsed);
+            if(node->physicsMode == PHYSICS_2D && collisionTarget->physicsMode == PHYSICS_2D) {
+              if(is2dCollided(scene, camera, node, collisionTarget)) {
+                CollisionInfo userInfo = { 0 };
+                if(!(node->isThrough || collisionTarget->isThrough)) {
+                  node->position[0] = node->previousPosition[0];
+                  node->position[1] = node->previousPosition[1];
+                  collisionTarget->position[0] = collisionTarget->previousPosition[0];
+                  collisionTarget->position[1] = collisionTarget->previousPosition[1];
+                }
+                userInfo.target = collisionTarget;
+                pushAlloc(&node->collisionTargets, sizeof(CollisionInfo), &userInfo);
+                userInfo.target = node;
+                pushAlloc(&collisionTarget->collisionTargets, sizeof(CollisionInfo), &userInfo);
+                node->collisionFlags |= flagsA;
+                collisionTarget->collisionFlags |= flagsB;
               }
-              userInfo.target = collisionTarget;
-              userInfo.info = infoA;
-              pushAlloc(&node->collisionTargets, sizeof(CollisionInfo), &userInfo);
-              userInfo.target = node;
-              userInfo.info = infoB;
-              pushAlloc(&collisionTarget->collisionTargets, sizeof(CollisionInfo), &userInfo);
-              node->collisionFlags |= flagsA;
-              collisionTarget->collisionFlags |= flagsB;
+            } else {
+              Vector infoA, infoB;
+              if(testCollisionPolygonPolygon(*node, *collisionTarget, &infoA, &infoB)) {
+                CollisionInfo userInfo;
+                if(!(node->isThrough || collisionTarget->isThrough)) {
+                  float staticFriction, dynamicFriction, rollingFriction;
+                  staticFriction = sqrtf(node->collisionShape.staticFriction * node->collisionShape.staticFriction + collisionTarget->collisionShape.staticFriction * collisionTarget->collisionShape.staticFriction);
+                  dynamicFriction = sqrtf(node->collisionShape.dynamicFriction * node->collisionShape.dynamicFriction + collisionTarget->collisionShape.dynamicFriction * collisionTarget->collisionShape.dynamicFriction);
+                  rollingFriction = sqrtf(node->collisionShape.rollingFriction * node->collisionShape.rollingFriction + collisionTarget->collisionShape.rollingFriction * collisionTarget->collisionShape.rollingFriction);
+                  collideNodes(node, collisionTarget, &infoA, staticFriction, dynamicFriction, rollingFriction, elapsed);
+                  collideNodes(collisionTarget, node, &infoB, staticFriction, dynamicFriction, rollingFriction, elapsed);
+                }
+                userInfo.target = collisionTarget;
+                userInfo.info = infoA;
+                pushAlloc(&node->collisionTargets, sizeof(CollisionInfo), &userInfo);
+                userInfo.target = node;
+                userInfo.info = infoB;
+                pushAlloc(&collisionTarget->collisionTargets, sizeof(CollisionInfo), &userInfo);
+                node->collisionFlags |= flagsA;
+                collisionTarget->collisionFlags |= flagsB;
+              }
             }
           }
         }
       }
     }
   }
-  for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) {
-    IntervalEventNode *interval;
-    clearVec3(node->force);
-    clearVec3(node->torque);
-    if(node->behaviour != NULL) {
-      if(!node->behaviour(node)) {
-        node = previousData(&scene->nodes);
-        continue;
-      }
-    }
-    resetIteration(&node->intervalEvents);
-    interval = nextData(&node->intervalEvents);
-    while(interval) {
-      clock_t current = clock();
-      clock_t diff = current - interval->begin;
-      if(diff < 0) {
-        interval->begin = current;
-      } else {
-        if(interval->interval < (unsigned int)diff) {
-          interval->begin = current;
-          interval->callback(node);
-        }
-      }
-      interval = nextData(&node->intervalEvents);
-    }
-  }
+  for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) runNodeBehaviour(node, elapsed);
+  cameraIter = initNodeIter(&camera->nodes);
+  for(node = nextNode(&cameraIter);node != NULL;node = nextNode(&cameraIter)) runNodeBehaviour(node, elapsed);
   if(scene->behaviour) scene->behaviour(scene, elapsed);
   resetIteration(&scene->intervalEvents);
   intervalScene = nextData(&scene->intervalEvents);
@@ -292,7 +362,10 @@ void updateScene(Scene *scene, float elapsed) {
     } else {
       if(intervalScene->interval < (unsigned int)diff) {
         intervalScene->begin = current;
-        intervalScene->callback(scene);
+        if(!intervalScene->callback(scene)) {
+          previousData(&scene->intervalEvents);
+          removeByData(&scene->intervalEvents, intervalScene);
+        }
       }
     }
     intervalScene = nextData(&scene->intervalEvents);
