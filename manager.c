@@ -10,6 +10,15 @@ static void (*transitionFunc)(Image*, Image*, Image*, float);
 static float transitionSpeed;
 static float transitionRatio;
 static Image previousImage;
+static int debugMode;
+
+void setDebugMode(int mode) {
+  debugMode = mode;
+}
+
+int getDebugMode(void) {
+  return debugMode;
+}
 
 void setCurrentSceneEx(Scene *scene, Camera *camera, void (*transition)(Image*, Image*, Image*, float), float speed) {
   previousScene = currentScene;

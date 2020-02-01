@@ -38,9 +38,6 @@ void translateTransformation(float dx, float dy, float dz);
 void scaleTransformation(float sx, float sy, float sz);
 void rotateTransformation(float rx, float ry, float rz);
 
-void clearAABB(void);
-float (*getAABB(float out[3][2]))[2];
-
 void fillTriangle(Vertex vertices[3], Image image, const float uv[3][2], float zBuffer[], Image *output);
 void fillPolygons(Vector vertices, Vector indices, Image image, Vector uv, Vector uvIndices, float zBuffer[], Image *output);
 

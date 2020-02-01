@@ -9,6 +9,7 @@
 #include "./include/matrix.h"
 #include "./include/graphics.h"
 #include "./include/colors.h"
+#include "./include/manager.h"
 
 #define VELOCITY_LIMIT 200.0F * 10000.0F / 3600.0F
 
@@ -60,6 +61,8 @@ void drawSceneEx(Scene *scene, Image *output, Camera *camera, Node *replacedNode
   float cameraMatrix[4][4];
   float *zBuffer;
   float aspect;
+  int debugMode;
+  debugMode = getDebugMode();
   if(output->width == 0 || output->height == 0) {
     aspect = 1.0F;
   } else {
@@ -92,17 +95,17 @@ void drawSceneEx(Scene *scene, Image *output, Camera *camera, Node *replacedNode
   genPerspectiveMat4(camera->fov, camera->nearLimit, camera->farLimit, aspect, projection);
   mulMat4(projection, lookAt, cameraMatrix);
   setZNear(camera->nearLimit);
-  clearImage(output, scene->background);
+  clearImage(output, debugMode ?  WHITE : scene->background);
   zBuffer = initZBuffer(output->width, output->height);
   iterf(&scene->nodes, &node) {
     setCameraMat4(cameraMatrix);
     setDivideByZ(TRUE);
-    drawNode(node, zBuffer, replacedNode, camera->sceneFilterAND, camera->sceneFilterOR, output);
+    drawNode(node, zBuffer, replacedNode, replacedNode == NULL ? debugMode : FALSE, camera->sceneFilterAND, camera->sceneFilterOR, output);
   }
   iterf(&camera->nodes, &node) {
     setCameraMat4(cameraMatrix);
     setDivideByZ(TRUE);
-    drawNode(node, zBuffer, replacedNode, 0x0F, 0x00, output);
+    drawNode(node, zBuffer, replacedNode, replacedNode == NULL ? debugMode : FALSE, 0x0F, 0x00, output);
   }
   free(zBuffer);
 }
@@ -231,32 +234,8 @@ static int is2dCollided(Scene *scene, Camera *camera, Node *node, Node *collisio
 }
 
 static void runNodeBehaviour(Scene *scene, Node *node, float elapsed) {
-  float temp[3];
-  float tempMat4[4][4];
-  float tempMat3[2][3][3];
-  float orientation[3][3];
   IntervalEventNode *interval;
   if(!node->isActive) return;
-  node->previousPosition[0] = node->position[0];
-  node->previousPosition[1] = node->position[1];
-  if(node->collisionShape.mass != 0.0F) {
-    if(node->isGravityEnabled) addVec3(node->force, mulVec3ByScalar(scene->acceleration, elapsed * node->collisionShape.mass, temp), node->force);
-    addVec3(node->velocity, mulVec3ByScalar(node->force, elapsed / node->collisionShape.mass, temp), node->velocity);
-    addVec3(node->velocity, divVec3ByScalar(node->impulseForce, node->collisionShape.mass, temp), node->velocity);
-    addVec3(node->position, mulVec3ByScalar(node->velocity, elapsed, temp), node->position);
-    genRotationMat4(node->angle[0], node->angle[1], node->angle[2], tempMat4);
-    convMat4toMat3(tempMat4, orientation);
-    genSkewMat3(node->angVelocity, tempMat3[0]);
-    addMat3(orientation, mulMat3ByScalar(mulMat3(tempMat3[0], orientation, tempMat3[1]), elapsed, tempMat3[0]), tempMat3[1]);
-    orthogonalize3(tempMat3[1], orientation);
-    getAngleFromMat3(orientation, node->angle);
-    addVec3(node->angMomentum, mulVec3ByScalar(node->torque, elapsed, temp), node->angMomentum);
-    mulMat3(orientation, mulMat3(node->collisionShape.inverseInertia, transposeMat3(orientation, tempMat3[0]), tempMat3[1]), node->collisionShape.worldInverseInertia);
-    mulMat3Vec3(node->collisionShape.worldInverseInertia, node->angMomentum, node->angVelocity);
-  }
-  subVec3(node->force, mulVec3ByScalar(node->force, elapsed, temp), node->force);
-  clearVec3(node->impulseForce);
-  clearVec3(node->torque);
   if(node->behaviour != NULL) {
     if(!node->behaviour(node, elapsed)) return;
   }
@@ -283,8 +262,33 @@ void updateSceneEx(Scene *scene, float rawElapsed, Camera *camera) {
   scene->clock += elapsed;
   iter = initNodeIter(&scene->nodes);
   for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) {
+    float temp[3];
+    float tempMat4[4][4];
+    float tempMat3[2][3][3];
+    float orientation[3][3];
     CollisionInfo *info;
     if(!node->isActive) continue;
+    node->previousPosition[0] = node->position[0];
+    node->previousPosition[1] = node->position[1];
+    if(node->collisionShape.mass != 0.0F) {
+      if(node->isGravityEnabled) addVec3(node->force, mulVec3ByScalar(scene->acceleration, elapsed * node->collisionShape.mass, temp), node->force);
+      addVec3(node->velocity, mulVec3ByScalar(node->force, elapsed / node->collisionShape.mass, temp), node->velocity);
+      addVec3(node->velocity, divVec3ByScalar(node->impulseForce, node->collisionShape.mass, temp), node->velocity);
+      addVec3(node->position, mulVec3ByScalar(node->velocity, elapsed, temp), node->position);
+      genRotationMat4(node->angle[0], node->angle[1], node->angle[2], tempMat4);
+      convMat4toMat3(tempMat4, orientation);
+      genSkewMat3(node->angVelocity, tempMat3[0]);
+      addMat3(orientation, mulMat3ByScalar(mulMat3(tempMat3[0], orientation, tempMat3[1]), elapsed, tempMat3[0]), tempMat3[1]);
+      orthogonalize3(tempMat3[1], orientation);
+      getAngleFromMat3(orientation, node->angle);
+      addVec3(node->angMomentum, mulVec3ByScalar(node->torque, elapsed, temp), node->angMomentum);
+      mulMat3(orientation, mulMat3(node->collisionShape.inverseInertia, transposeMat3(orientation, tempMat3[0]), tempMat3[1]), node->collisionShape.worldInverseInertia);
+      mulMat3Vec3(node->collisionShape.worldInverseInertia, node->angMomentum, node->angVelocity);
+    }
+    subVec3(node->force, mulVec3ByScalar(node->force, elapsed, temp), node->force);
+    clearVec3(node->impulseForce);
+    clearVec3(node->torque);
+    getShapeAABB(node->collisionShape, getWorldTransfomration(node, tempMat4), node->aabb);
     iterf(&node->collisionTargets, &info) freeVector(&info->info);
     freeVector(&node->collisionTargets);
     node->collisionFlags = 0;

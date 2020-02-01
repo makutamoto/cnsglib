@@ -115,7 +115,7 @@ void discardSprite(Node *node) {
   discardNode(node);
 }
 
-void drawNode(Node *node, float zBuffer[], Node *replacedNode, unsigned char filterAND, unsigned char filterOR, Image *output) {
+void drawNode(Node *node, float zBuffer[], Node *replacedNode, int replaced, unsigned char filterAND, unsigned char filterOR, Image *output) {
   Node *child;
   unsigned int halfWidth, halfHeight;
   if(!node->isActive) return;
@@ -172,24 +172,18 @@ void drawNode(Node *node, float zBuffer[], Node *replacedNode, unsigned char fil
   }
   getTransformation(node->lastTransformation);
   setFakeZ(node->useFakeZ, node->fakeZ);
-  if(replacedNode) {
-    if(node == replacedNode) {
+  if(replacedNode || replaced) {
+    if(node == replacedNode || (replaced && node->collisionTexture.width != 0 && node->collisionTexture.height != 0)) {
       fillPolygons(node->shape.vertices, node->shape.indices, node->collisionTexture, node->shape.uv, node->shape.uvIndices, zBuffer, output);
     }
   } else {
-    if(node->isVisible) {
-      clearAABB();
-      fillPolygons(node->shape.vertices, node->shape.indices, node->texture, node->shape.uv, node->shape.uvIndices, zBuffer, output);
-      getAABB(node->aabb);
-    } else {
-      getShapeAABB(node->shape, node->lastTransformation, node->aabb);
-    }
+    if(node->isVisible) fillPolygons(node->shape.vertices, node->shape.indices, node->texture, node->shape.uv, node->shape.uvIndices, zBuffer, output);
   }
   popTransformation();
   resetIteration(&node->children);
   child = previousData(&node->children);
   while(child) {
-    drawNode(child, zBuffer, replacedNode, filterAND, filterOR, output);
+    drawNode(child, zBuffer, replacedNode, replaced, filterAND, filterOR, output);
     child = previousData(&node->children);
   }
   popTransformation();

@@ -3,6 +3,8 @@
 
 #define setCurrentScene(scene, transition, speed) setCurrentSceneEx(scene, NULL, transition, speed)
 
+void setDebugMode(int mode);
+int getDebugMode(void);
 void setCurrentSceneEx(Scene *scene, Camera *camera, void (*transition)(Image*, Image*, Image*, float), float speed);
 Scene* getCurrentScene(void);
 Camera* getCurrentCamera(void);

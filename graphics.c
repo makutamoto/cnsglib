@@ -26,9 +26,6 @@ static unsigned int currentStore = 0;
 static unsigned char colorFilterAND = 0x0F;
 static unsigned char colorFilterOR;
 
-int aabbClear = TRUE;
-static float aabbTemp[3][2];
-
 void initScreen(short width, short height) {
 	CONSOLE_CURSOR_INFO info = { 1, FALSE };
 	COORD bufferSize;
@@ -170,21 +167,6 @@ void rotateTransformation(float rx, float ry, float rz) {
 	mulMat4(temp2, genRotationMat4(rx, ry, rz, temp1), transformation);
 }
 
-void clearAABB(void) {
-	aabbClear = TRUE;
-}
-
-float (*getAABB(float out[3][2]))[2] {
-	out[0][0] = aabbTemp[0][0];
-	out[0][1] = aabbTemp[0][1];
-	out[1][0] = aabbTemp[1][0];
-	out[1][1] = aabbTemp[1][1];
-	out[2][0] = aabbTemp[2][0];
-	out[2][1] = aabbTemp[2][1];
-
-	return out;
-}
-
 static float edgeFunction(float x, float y, const float a[2], const float b[2]) {
 	return (a[0] - b[0]) * (y - a[1]) - (a[1] - b[1]) * (x - a[0]);
 }
@@ -308,34 +290,6 @@ void fillTriangle(Vertex vertices[3], Image image, const float uv[3][2], float z
 	mulMat4Vec4(transformation, vertices[0].components, transformedTemp[0]);
 	mulMat4Vec4(transformation, vertices[1].components, transformedTemp[1]);
 	mulMat4Vec4(transformation, vertices[2].components, transformedTemp[2]);
-	if(aabbClear) {
-		aabbTemp[0][0] = transformedTemp[0][0];
-		aabbTemp[0][1] = transformedTemp[0][0];
-		aabbTemp[1][0] = transformedTemp[0][1];
-		aabbTemp[1][1] = transformedTemp[0][1];
-		aabbTemp[2][0] = transformedTemp[0][2];
-		aabbTemp[2][1] = transformedTemp[0][2];
-		aabbClear = FALSE;
-	} else {
-		if(aabbTemp[0][0] > transformedTemp[0][0]) aabbTemp[0][0] = transformedTemp[0][0];
-		if(aabbTemp[0][1] < transformedTemp[0][0]) aabbTemp[0][1] = transformedTemp[0][0];
-		if(aabbTemp[1][0] > transformedTemp[0][1]) aabbTemp[1][0] = transformedTemp[0][1];
-		if(aabbTemp[1][1] < transformedTemp[0][1]) aabbTemp[1][1] = transformedTemp[0][1];
-		if(aabbTemp[2][0] > transformedTemp[0][2]) aabbTemp[2][0] = transformedTemp[0][2];
-		if(aabbTemp[2][1] < transformedTemp[0][2]) aabbTemp[2][1] = transformedTemp[0][2];
- 	}
-	if(aabbTemp[0][0] > transformedTemp[1][0]) aabbTemp[0][0] = transformedTemp[1][0];
-	if(aabbTemp[0][1] < transformedTemp[1][0]) aabbTemp[0][1] = transformedTemp[1][0];
-	if(aabbTemp[1][0] > transformedTemp[1][1]) aabbTemp[1][0] = transformedTemp[1][1];
-	if(aabbTemp[1][1] < transformedTemp[1][1]) aabbTemp[1][1] = transformedTemp[1][1];
-	if(aabbTemp[2][0] > transformedTemp[1][2]) aabbTemp[2][0] = transformedTemp[1][2];
-	if(aabbTemp[2][1] < transformedTemp[1][2]) aabbTemp[2][1] = transformedTemp[1][2];
-	if(aabbTemp[0][0] > transformedTemp[2][0]) aabbTemp[0][0] = transformedTemp[2][0];
-	if(aabbTemp[0][1] < transformedTemp[2][0]) aabbTemp[0][1] = transformedTemp[2][0];
-	if(aabbTemp[1][0] > transformedTemp[2][1]) aabbTemp[1][0] = transformedTemp[2][1];
-	if(aabbTemp[1][1] < transformedTemp[2][1]) aabbTemp[1][1] = transformedTemp[2][1];
-	if(aabbTemp[2][0] > transformedTemp[2][2]) aabbTemp[2][0] = transformedTemp[2][2];
-	if(aabbTemp[2][1] < transformedTemp[2][2]) aabbTemp[2][1] = transformedTemp[2][2];
 	for(i = 0;i < 3;i++) {
 		mulMat4Vec4Proj(camera, transformedTemp[i], transformed[i]);
 		if(transformed[i][2] < 0.0F) {
