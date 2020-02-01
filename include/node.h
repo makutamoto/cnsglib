@@ -43,6 +43,7 @@ typedef struct Node {
 	float angVelocity[3];
 	float angMomentum[3];
 	float force[3];
+	float impulseForce[3];
 	float torque[3];
 	float previousPosition[3];
 	float position[3];
@@ -66,6 +67,7 @@ typedef struct Node {
 	Vector children;
 	int (*behaviour)(struct Node*, float);
 	PhysicsMode physicsMode;
+	int isGravityEnabled;
 	int isInterface;
 	Align interfaceAlign[2];
 	int isActive;
@@ -82,8 +84,8 @@ typedef struct {
 } NodeIter;
 
 typedef struct {
-	clock_t begin;
-	unsigned int interval;
+	float counter;
+	float seconds;
 	void *data;
 	int (*callback)(Node*, void *data);
 } IntervalEventNode;
@@ -114,7 +116,7 @@ float (*getWorldTransfomration(Node *node, float out[4][4]))[4];
 CollisionInfoNode2Node initCollisionInfoNode2Node(Node *nodeA, Node *nodeB, float triangle[3][3], unsigned long normalIndex, unsigned long *uvIndex[3], float contacts[2][3], float depth);
 int testCollision(Node a, Node b);
 int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBOut);
-void addIntervalEventNode(Node *node, unsigned int milliseconds, int (*callback)(Node*, void*), void *data);
+IntervalEventNode* addIntervalEventNode(Node *node, float seconds, int (*callback)(Node*, void*), void *data);
 
 Shape initShape(float mass);
 Shape initShapePlane(float width, float height, unsigned char color, float mass);

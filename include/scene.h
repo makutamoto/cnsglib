@@ -37,6 +37,7 @@ typedef struct Scene {
   Camera camera;
   Vector intervalEvents;
   float clock;
+  float speed;
   void (*behaviour)(struct Scene*, float);
 } Scene;
 
@@ -46,8 +47,8 @@ typedef struct {
 } CollisionInfo;
 
 typedef struct {
-	clock_t begin;
-	unsigned int interval;
+  float counter;
+	float seconds;
 	int (*callback)(Scene*);
 } IntervalEventScene;
 
@@ -57,10 +58,10 @@ typedef struct {
 void initCamera(Camera *camera, float x, float y, float z);
 
 Scene initScene(void);
-void addIntervalEventScene(Scene *scene, unsigned int milliseconds, int (*callback)(Scene*));
+IntervalEventScene* addIntervalEventScene(Scene *scene, float seconds, int (*callback)(Scene*));
 Node* getNodeByMask(Vector *nodes, unsigned int mask);
 void drawSceneEx(Scene *scene, Image *output, Camera *camera, Node *replacedNode);
-void updateSceneEx(Scene *scene, float elapsed, Camera *camera);
+void updateSceneEx(Scene *scene, float rawElapsed, Camera *camera);
 void discardScene(Scene *scene);
 
 #endif

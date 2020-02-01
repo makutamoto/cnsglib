@@ -347,13 +347,14 @@ int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBO
   return collided;
 }
 
-void addIntervalEventNode(Node *node, unsigned int milliseconds, int (*callback)(Node*, void*), void *data) {
+IntervalEventNode* addIntervalEventNode(Node *node, float seconds, int (*callback)(Node*, void*), void *data) {
   IntervalEventNode *interval = malloc(sizeof(IntervalEventNode));
-  interval->begin = clock();
-  interval->interval = milliseconds * CLOCKS_PER_SEC / 1000;
+  interval->counter = 0.0F;
+  interval->seconds = seconds;
   interval->data = data;
   interval->callback = callback;
   push(&node->intervalEvents, interval);
+  return interval;
 }
 
 Shape initShape(float mass) {
