@@ -87,7 +87,7 @@ typedef struct {
 	float counter;
 	float seconds;
 	void *data;
-	int (*callback)(Node*, void *data);
+	int (*callback)(Node*, void*);
 } IntervalEventNode;
 
 typedef struct {
@@ -118,12 +118,12 @@ int testCollision(Node a, Node b);
 int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBOut);
 IntervalEventNode* addIntervalEventNode(Node *node, float seconds, int (*callback)(Node*, void*), void *data);
 
-Shape initShape(float mass);
-Shape initShapePlane(float width, float height, unsigned char color, float mass);
+Shape initShape(void);
+Shape initShapePlane(float width, float height, unsigned char color);
 Shape initShapePlaneV(float width, float height, unsigned char color);
 Shape initShapePlaneInv(float width, float height, unsigned char color);
-Shape initShapeBox(float width, float height, float depth, unsigned char color, float mass);
-int initShapeFromObj(Shape *shape, char *filename, float mass);
+Shape initShapeBox(float width, float height, float depth, unsigned char color);
+int initShapeFromObj(Shape *shape, char *filename);
 float (*getShapeAABB(Shape shape, float transformation[4][4], float out[3][2]))[2];
 void discardShape(Shape shape);
 

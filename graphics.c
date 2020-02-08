@@ -29,24 +29,21 @@ static unsigned char colorFilterOR;
 void initScreen(short width, short height) {
 	CONSOLE_CURSOR_INFO info = { 1, FALSE };
 	COORD bufferSize;
-	char buffer[32];
 	#ifndef __BORLANDC__
 	CONSOLE_FONT_INFOEX font = { sizeof(CONSOLE_FONT_INFOEX) };
 	#endif
-	sprintf(buffer, "mode %d, %d", 2 * width, height);
-	system(buffer);
-	screen = GetStdHandle(STD_OUTPUT_HANDLE);
+	screen = CreateConsoleScreenBuffer(GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
 	#ifndef __BORLANDC__
 	GetCurrentConsoleFontEx(screen, FALSE, &font);
 	font.dwFontSize.X = 1;
 	font.dwFontSize.Y = 2;
 	SetCurrentConsoleFontEx(screen, FALSE, &font);
-	// Specify font family.
 	#endif
 	bufferSize.X = 2 * width;
 	bufferSize.Y = height;
 	SetConsoleScreenBufferSize(screen, bufferSize);
 	SetConsoleCursorInfo(screen, &info);
+	SetConsoleActiveScreenBuffer(screen);
 	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 }
 

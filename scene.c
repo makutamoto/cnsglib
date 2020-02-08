@@ -35,10 +35,11 @@ Scene initScene(void) {
   return scene;
 }
 
-IntervalEventScene* addIntervalEventScene(Scene *scene, float seconds, int (*callback)(Scene*)) {
+IntervalEventScene* addIntervalEventScene(Scene *scene, float seconds, int (*callback)(Scene*, void*), void *data) {
   IntervalEventScene *interval = malloc(sizeof(IntervalEventScene));
   interval->counter = 0.0F;
   interval->seconds = seconds;
+  interval->data = data;
   interval->callback = callback;
   push(&scene->intervalEvents, interval);
   return interval;
@@ -363,7 +364,7 @@ void updateSceneEx(Scene *scene, float rawElapsed, Camera *camera) {
     intervalScene->counter += elapsed;
     if(intervalScene->counter >= intervalScene->seconds) {
       intervalScene->counter = 0.0F;
-      if(!intervalScene->callback(scene)) {
+      if(!intervalScene->callback(scene, intervalScene->data)) {
         previousData(&scene->intervalEvents);
         removeByData(&scene->intervalEvents, intervalScene);
       }

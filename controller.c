@@ -33,10 +33,12 @@ ControllerData* initControllerEventEx(Vector *list, WORD key, void (*downEvent)(
 }
 
 void initControllerDataCrossEx(Vector *list, ControllerData *events[4], WORD up, WORD left, WORD down, WORD right, float dest[2]) {
-  events[0] = initControllerDataEx(list, up, 1.0F, 0.0F, &dest[1]);
-  events[1] = initControllerDataEx(list, left, -1.0F, 0.0F, &dest[0]);
-  events[2] = initControllerDataEx(list, down, -1.0F, 0.0F, &dest[1]);
-  events[3] = initControllerDataEx(list, right, 1.0F, 0.0F, &dest[0]);
+  ControllerData *data[4];
+  data[0] = initControllerDataEx(list, up, 1.0F, 0.0F, &dest[1]);
+  data[1] = initControllerDataEx(list, left, -1.0F, 0.0F, &dest[0]);
+  data[2] = initControllerDataEx(list, down, -1.0F, 0.0F, &dest[1]);
+  data[3] = initControllerDataEx(list, right, 1.0F, 0.0F, &dest[0]);
+  if(events != NULL) memcpy_s(events, 4 * sizeof(ControllerData), data, sizeof(data));
 }
 
 static void runController(KEY_EVENT_RECORD *keyEvent, ControllerData *controllerEvent, int update) {

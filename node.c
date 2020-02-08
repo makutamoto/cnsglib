@@ -158,7 +158,6 @@ void drawNode(Node *node, float zBuffer[], Node *replacedNode, int replaced, uns
     translateTransformation(node->position[0], node->position[1], node->position[2]);
   }
   rotateTransformation(node->angle[0], node->angle[1], node->angle[2]);
-  pushTransformation();
   if(node->isInterface) {
     clearCameraMat4();
     setDivideByZ(FALSE);
@@ -179,7 +178,6 @@ void drawNode(Node *node, float zBuffer[], Node *replacedNode, int replaced, uns
   } else {
     if(node->isVisible) fillPolygons(node->shape.vertices, node->shape.indices, node->texture, node->shape.uv, node->shape.uvIndices, zBuffer, output);
   }
-  popTransformation();
   resetIteration(&node->children);
   child = previousData(&node->children);
   while(child) {
@@ -205,10 +203,11 @@ void applyForce(Node *node, float force[3], int mask, int rotation) {
 }
 
 float (*getNodeTransformation(Node node, float out[4][4]))[4] {
-  float temp[2][4][4];
+  float temp[4][4][4];
   genTranslationMat4(node.position[0], node.position[1], node.position[2], temp[0]);
   genRotationMat4(node.angle[0], node.angle[1], node.angle[2], temp[1]);
-  mulMat4(temp[0], temp[1], out);
+  genScaleMat4(node.scale[0], node.scale[1], node.scale[2], temp[3]);
+  mulMat4(mulMat4(temp[0], temp[1], temp[2]), temp[3], out);
   return out;
 }
 
@@ -351,7 +350,7 @@ IntervalEventNode* addIntervalEventNode(Node *node, float seconds, int (*callbac
   return interval;
 }
 
-Shape initShape(float mass) {
+Shape initShape(void) {
   Shape shape;
   memset(&shape, 0, sizeof(Shape));
   shape.indices = initVector();
@@ -360,15 +359,15 @@ Shape initShape(float mass) {
   shape.normalIndices = initVector();
   shape.uv = initVector();
   shape.uvIndices = initVector();
-  shape.mass = mass;
+  shape.mass = 1.0F;
   return shape;
 }
 
-Shape initShapePlane(float width, float height, unsigned char color, float mass) {
+Shape initShapePlane(float width, float height, unsigned char color) {
   int i;
   float halfWidth = width / 2.0F;
   float halfHeight = height / 2.0F;
-  Shape shape = initShape(1.0F);
+  Shape shape = initShape();
   static unsigned long generated_indices[] = { 0, 1, 2, 1, 3, 2 };
   Vertex generated_vertices[4];
   static unsigned long generated_normalIndices[] = {
@@ -380,7 +379,6 @@ Shape initShapePlane(float width, float height, unsigned char color, float mass)
   static float generated_uv[][2] = {
     { 1.0F, 1.0F }, { 0.0F, 1.0F }, { 1.0F, 0.0F }, { 0.0F, 0.0F },
   };
-  shape.mass = mass;
   generated_vertices[0] = initVertex(-halfWidth, 0.0F, -halfHeight, color);
   generated_vertices[1] = initVertex(halfWidth, 0.0F, -halfHeight, color);
   generated_vertices[2] = initVertex(-halfWidth, 0.0F, halfHeight, color);
@@ -419,7 +417,7 @@ Shape initShapePlaneV(float width, float height, unsigned char color) {
   int i;
   float halfWidth = width / 2.0F;
   float halfHeight = height / 2.0F;
-  Shape shape = initShape(1.0F);
+  Shape shape = initShape();
   static unsigned long generated_indices[] = { 0, 2, 1, 3, 1, 2 };
   Vertex generated_vertices[4];
   static unsigned long generated_normalIndices[] = {
@@ -469,7 +467,7 @@ Shape initShapePlaneInv(float width, float height, unsigned char color) {
   int i;
   float halfWidth = width / 2.0F;
   float halfHeight = height / 2.0F;
-  Shape shape = initShape(1.0F);
+  Shape shape = initShape();
   static unsigned long generated_indices[] = { 0, 1, 2, 1, 3, 2 };
   Vertex generated_vertices[4];
   static unsigned long generated_normalIndices[] = {
@@ -515,12 +513,12 @@ Shape initShapePlaneInv(float width, float height, unsigned char color) {
   return shape;
 }
 
-Shape initShapeBox(float width, float height, float depth, unsigned char color, float mass) {
+Shape initShapeBox(float width, float height, float depth, unsigned char color) {
   int i;
   float halfWidth = width / 2.0F;
   float halfHeight = height / 2.0F;
   float halfDepth = depth / 2.0F;
-  Shape shape = initShape(1.0F);
+  Shape shape = initShape();
   static unsigned long generated_indices[] = {
     0, 1, 2, 1, 3, 2, 4, 5, 6, 5, 7, 6,
     8, 9, 10, 9, 11, 10, 12, 13, 14, 13, 15, 14,
@@ -546,7 +544,6 @@ Shape initShapeBox(float width, float height, float depth, unsigned char color, 
     { 0.0F, 0.0F }, { 0.0F, 1.0F }, { 1.0F, 0.0F }, { 1.0F, 1.0F },
     { 0.0F, 0.0F }, { 1.0F, 0.0F }, { 0.0F, 1.0F }, { 1.0F, 1.0F },
   };
-  shape.mass = mass;
   generated_vertices[0] = initVertex(-halfWidth, -halfHeight, halfDepth, color);
   generated_vertices[1] = initVertex(-halfWidth, halfHeight, halfDepth, color);
   generated_vertices[2] = initVertex(halfWidth, -halfHeight, halfDepth, color);
@@ -638,14 +635,14 @@ static size_t getUntil(char *string, char *separators, size_t index, char *out, 
   return index + 1;
 }
 
-int initShapeFromObj(Shape *shape, char *filename, float mass) {
+int initShapeFromObj(Shape *shape, char *filename) {
   FILE *file;
   char buffer[OBJ_LINE_BUFFER_SIZE];
   char temp[OBJ_WORD_BUFFER_SIZE];
   size_t line = 1;
   float aabb[3][2];
   BOOL aabbCleared = FALSE;
-  *shape = initShape(mass);
+  *shape = initShape();
   if(fopen_s(&file, filename, "r")) {
     fputs("File not found.", stderr);
     fclose(file);

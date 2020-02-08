@@ -49,7 +49,8 @@ typedef struct {
 typedef struct {
   float counter;
 	float seconds;
-	int (*callback)(Scene*);
+  void *data;
+	int (*callback)(Scene*, void*);
 } IntervalEventScene;
 
 #define drawScene(scene, output) drawSceneEx((scene), (output), &(scene)->camera, NULL)
@@ -58,7 +59,7 @@ typedef struct {
 void initCamera(Camera *camera, float x, float y, float z);
 
 Scene initScene(void);
-IntervalEventScene* addIntervalEventScene(Scene *scene, float seconds, int (*callback)(Scene*));
+IntervalEventScene* addIntervalEventScene(Scene *scene, float seconds, int (*callback)(Scene*, void*), void *data);
 Node* getNodeByMask(Vector *nodes, unsigned int mask);
 void drawSceneEx(Scene *scene, Image *output, Camera *camera, Node *replacedNode);
 void updateSceneEx(Scene *scene, float rawElapsed, Camera *camera);
