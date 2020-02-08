@@ -9,11 +9,11 @@
 
 #include "./graphics.h"
 
-Image linearTransitionH(Image imageA, Image imageB, float ratio);
-Image linearTransitionV(Image imageA, Image imageB, float ratio);
+Image linearTransitionH(Image *imageA, Image *imageB, float ratio);
+Image linearTransitionV(Image *imageA, Image *imageB, float ratio);
 void revoluteTransition(Image *image, Image *previous, Image *current, float ratio);
 void stripeHTransitionBase(Image *out, Image *previous, Image *current, int n, float ratio, int direction);
 void stripeVTransitionBase(Image *out, Image *previous, Image *current, int n, float ratio, int direction);
-Image ThreeDimensionTransition(Image imageA, Image imageB, float x, float y, float ratio);
+Image ThreeDimensionTransition(Image *imageA, Image *imageB, float x, float y, float ratio);
 
 #endif

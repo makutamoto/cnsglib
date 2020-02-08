@@ -168,7 +168,7 @@ static float edgeFunction(float x, float y, const float a[2], const float b[2]) 
 	return (a[0] - b[0]) * (y - a[1]) - (a[1] - b[1]) * (x - a[0]);
 }
 
-static void projectTriangle(float points[3][4], Image image, const float uv[3][2], unsigned char colors[3], float zBuffer[], Image *output) {
+static void projectTriangle(float points[3][4], Image *image, const float uv[3][2], unsigned char colors[3], float zBuffer[], Image *output) {
 	unsigned int i, y, x;
 	int tooFar = 0;
 	float transformed[3][4];
@@ -198,7 +198,7 @@ static void projectTriangle(float points[3][4], Image image, const float uv[3][2
 	minCoord[1] = (unsigned int)max(min(min(transformed[0][1], transformed[1][1]), transformed[2][1]), 0);
 	area = edgeFunction(transformed[0][0], transformed[0][1], transformed[1], transformed[2]);
 	if(area == 0.0F) return;
-	if(image.data == NULL) {
+	if(image->data == NULL) {
 		vertexColors[0] = colors[0] * transformed[0][3];
 		vertexColors[1] = colors[1] * transformed[1][3];
 		vertexColors[2] = colors[2] * transformed[2][3];
@@ -227,7 +227,7 @@ static void projectTriangle(float points[3][4], Image image, const float uv[3][2
 				depth = 1.0F / (transformed[0][3] * weights[0] + transformed[1][3] * weights[1] + transformed[2][3] * weights[2]);
 				z = depth * (transformed[0][2] * weights[0] + transformed[1][2] * weights[1] + transformed[2][2] * weights[2]);
 				if(z <= 1.0F && (useFakeZ ? fakeZ : depth) < zBuffer[index]) {
-					if(image.data == NULL) {
+					if(image->data == NULL) {
 						color = (unsigned char)roundf(depth * (vertexColors[0] * weights[0] + vertexColors[1] * weights[1] + vertexColors[2] * weights[2]));
 						if(color != NULL_COLOR) {
 							output->data[index] = color;
@@ -240,8 +240,8 @@ static void projectTriangle(float points[3][4], Image image, const float uv[3][2
 					} else {
 						dataCoords[0] = depth * (textures[0][0] * weights[0] + textures[1][0] * weights[1] + textures[2][0] * weights[2]);
 						dataCoords[1] =	depth * (textures[0][1] * weights[0] + textures[1][1] * weights[1] + textures[2][1] * weights[2]);
-						color = image.data[image.width * min((unsigned int)(floorf(image.height * dataCoords[1])), image.height - 1) + min((unsigned int)(floorf(image.width * dataCoords[0])), image.width - 1)];
-						if(color != image.transparent) {
+						color = image->data[image->width * min((unsigned int)(floorf(image->height * dataCoords[1])), image->height - 1) + min((unsigned int)(floorf(image->width * dataCoords[0])), image->width - 1)];
+						if(color != image->transparent) {
 							output->data[index] = (color & colorFilterAND) | colorFilterOR;
 							if(useFakeZ) {
 								zBuffer[index] = fakeZ;
@@ -274,7 +274,7 @@ static void calcUVOnLine(const float pointA[3], const float pointB[3], const flo
 	out[1] = (uvA[1] - uvB[1]) * weight + uvB[1];
 }
 
-void fillTriangle(Vertex vertices[3], Image image, const float uv[3][2], float zBuffer[], Image *output) {
+void fillTriangle(Vertex vertices[3], Image *image, const float uv[3][2], float zBuffer[], Image *output) {
 	int i;
 	float transformedTemp[3][4], transformed[3][4];
 	float triangle[3][4], triangleUV[3][2];
@@ -328,21 +328,21 @@ void fillTriangle(Vertex vertices[3], Image image, const float uv[3][2], float z
 	}
 }
 
-void fillPolygons(Vector vertices, Vector indices, Image image, Vector uv, Vector uvIndices, float zBuffer[], Image *output) {
+void fillPolygons(Vector *vertices, Vector *indices, Image *image, Vector *uv, Vector *uvIndices, float zBuffer[], Image *output) {
 	unsigned long i1, i2;
-	resetIteration(&indices);
-	resetIteration(&uvIndices);
-	for(i1 = 0;i1 < indices.length / 3;i1++) {
+	resetIteration(indices);
+	resetIteration(uvIndices);
+	for(i1 = 0;i1 < indices->length / 3;i1++) {
 		Vertex triangle[3];
 		float triangleUV[3][2];
 		for(i2 = 0;i2 < 3;i2++) {
 			unsigned long index;
-			index = *(unsigned long*)nextData(&indices);
-			triangle[i2] = *(Vertex*)dataAt(&vertices, index);
-			if(uv.length != 0) {
+			index = *(unsigned long*)nextData(indices);
+			triangle[i2] = *(Vertex*)dataAt(vertices, index);
+			if(uv->length != 0) {
 				float *uvPointer;
-				index = *(unsigned long*)nextData(&uvIndices);
-				uvPointer = (float*)dataAt(&uv, index);
+				index = *(unsigned long*)nextData(uvIndices);
+				uvPointer = (float*)dataAt(uv, index);
 				triangleUV[i2][0] = uvPointer[0];
 				triangleUV[i2][1] = uvPointer[1];
 			} else {

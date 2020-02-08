@@ -41,7 +41,7 @@ void clearImage(Image *image, unsigned char color);
 int isImageOverlap(Image *imageA, Image *imageB);
 void replaceImageColor(Image *image, unsigned char from, unsigned char to);
 void cropImage(Image *dest, Image *src, unsigned int xth, unsigned int yth);
-void pasteImage(Image dest, Image src, int x, int y);
+void pasteImage(Image *dest, Image *src, int x, int y);
 void copyImage(Image *dest, Image *src);
 Image loadBitmapEx(char *fileName, unsigned char transparent, int allowNotFound);
 void drawRect(Image *image, int x, int y, int width, int height, unsigned char color);
@@ -49,7 +49,7 @@ Image genCircle(unsigned int rad, unsigned char color);
 void freeImage(Image *image);
 
 FontSJIS initFontSJIS(Image font0201, Image font0208, unsigned int width0201, unsigned int width0208, unsigned int height);
-BOOL drawCharSJIS(Image target, FontSJIS font, unsigned int x, unsigned int y, char *character);
-void drawTextSJIS(Image target, FontSJIS font, unsigned int x, unsigned int y, char *text);
+BOOL drawCharSJIS(Image *target, FontSJIS *font, unsigned int x, unsigned int y, char *character);
+void drawTextSJIS(Image *target, FontSJIS *font, unsigned int x, unsigned int y, char *text);
 
 #endif

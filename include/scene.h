@@ -56,7 +56,7 @@ typedef struct {
 #define drawScene(scene, output) drawSceneEx((scene), (output), &(scene)->camera, NULL)
 #define updateScene(scene, elapsed) updateSceneEx(scene, elapsed, &(scene)->camera)
 
-void initCamera(Camera *camera, float x, float y, float z);
+Camera initCamera(float x, float y, float z);
 
 Scene initScene(void);
 IntervalEventScene* addIntervalEventScene(Scene *scene, float seconds, int (*callback)(Scene*, void*), void *data);

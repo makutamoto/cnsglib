@@ -93,17 +93,17 @@ void cropImage(Image *dest, Image *src, unsigned int xth, unsigned int yth) {
 	}
 }
 
-void pasteImage(Image dest, Image src, int x, int y) {
+void pasteImage(Image *dest, Image *src, int x, int y) {
 	long ix, iy;
-	for(iy = 0;iy < (long)src.height && iy + y < (long)dest.height;iy++) {
-		for(ix = 0;ix < (long)src.width && ix + x < (long)dest.width;ix++) {
-      size_t srcIndex = src.width * iy + ix;
+	for(iy = 0;iy < (long)src->height && iy + y < (long)dest->height;iy++) {
+		for(ix = 0;ix < (long)src->width && ix + x < (long)dest->width;ix++) {
+      size_t srcIndex = src->width * iy + ix;
       if(iy + y >= 0 && ix + x >= 0) {
-        size_t destIndex = dest.width * (iy + y) + ix + x;
-        if(src.data[srcIndex] == src.transparent) {
-          dest.data[destIndex] &= src.transparentFilter;
+        size_t destIndex = dest->width * (iy + y) + ix + x;
+        if(src->data[srcIndex] == src->transparent) {
+          dest->data[destIndex] &= src->transparentFilter;
         } else {
-          dest.data[destIndex] = src.data[srcIndex];
+          dest->data[destIndex] = src->data[srcIndex];
         }
       }
 		}
@@ -133,47 +133,47 @@ FontSJIS initFontSJIS(Image font0201, Image font0208, unsigned int width0201, un
 	return font;
 }
 
-BOOL drawCharSJIS(Image target, FontSJIS font, unsigned int x, unsigned int y, char *character) {
+BOOL drawCharSJIS(Image *target, FontSJIS *font, unsigned int x, unsigned int y, char *character) {
 	unsigned int fontx, fonty;
 	int ismultibyte;
 	Image image;
 	if(isCharacterMultibyte((unsigned char)character[0])) {
 		unsigned int multibyte = (unsigned char)character[0] << 8 | (unsigned char)character[1];
 		fontx = multibyte & 0x0F;
-		fonty = ((multibyte - 0x8140) >> 4) - font.offset0208;
+		fonty = ((multibyte - 0x8140) >> 4) - font->offset0208;
 		ismultibyte = TRUE;
-		image = initImage(font.width[1], font.height, BLACK, NULL_COLOR);
-		cropImage(&image, &font.font0208, fontx, fonty);
+		image = initImage(font->width[1], font->height, BLACK, NULL_COLOR);
+		cropImage(&image, &font->font0208, fontx, fonty);
 	} else {
 		fontx = character[0] & 0x0F;
-		fonty = ((character[0] >> 4) - font.offset0201) & 0x0F;
+		fonty = ((character[0] >> 4) - font->offset0201) & 0x0F;
     ismultibyte = FALSE;
-		image = initImage(font.width[0], font.height, BLACK, NULL_COLOR);
-		cropImage(&image, &font.font0201, fontx, fonty);
+		image = initImage(font->width[0], font->height, BLACK, NULL_COLOR);
+		cropImage(&image, &font->font0201, fontx, fonty);
 	}
-	pasteImage(target, image, x, y);
+	pasteImage(target, &image, x, y);
 	freeImage(&image);
 
 	return ismultibyte;
 }
 
-void drawTextSJIS(Image target, FontSJIS font, unsigned int x, unsigned int y, char *text) {
+void drawTextSJIS(Image *target, FontSJIS *font, unsigned int x, unsigned int y, char *text) {
 	unsigned int dx = 0;
 	unsigned int dy = 0;
 	while(*text != '\0') {
 		switch(*text) {
 			case '\n':
 				dx = 0;
-				dy += font.height;
+				dy += font->height;
 				break;
 			case '\r':
 				break;
 			default:
 				if(drawCharSJIS(target, font, x + dx, y + dy, text)) {
-					dx += font.width[1];
+					dx += font->width[1];
 					text += 1;
 				} else {
-					dx += font.width[0];
+					dx += font->width[0];
 				}
 		}
 		text += 1;
@@ -259,7 +259,7 @@ Image loadBitmapEx(char *fileName, unsigned char transparent, int allowNotFound)
 void drawRect(Image *image, int x, int y, int width, int height, unsigned char color) {
 	Image rect;
   rect = initImage(width, height, color, NULL_COLOR);
-  pasteImage(*image, rect, x, y);
+  pasteImage(image, &rect, x, y);
   freeImage(&rect);
 }
 

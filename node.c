@@ -111,7 +111,7 @@ void discardNode(Node *node) {
 }
 
 void discardSprite(Node *node) {
-  discardShape(node->shape);
+  discardShape(&node->shape);
   discardNode(node);
 }
 
@@ -173,10 +173,10 @@ void drawNode(Node *node, float zBuffer[], Node *replacedNode, int replaced, uns
   setFakeZ(node->useFakeZ, node->fakeZ);
   if(replacedNode || replaced) {
     if(node == replacedNode || (replaced && node->collisionTexture.width != 0 && node->collisionTexture.height != 0)) {
-      fillPolygons(node->shape.vertices, node->shape.indices, node->collisionTexture, node->shape.uv, node->shape.uvIndices, zBuffer, output);
+      fillPolygons(&node->shape.vertices, &node->shape.indices, &node->collisionTexture, &node->shape.uv, &node->shape.uvIndices, zBuffer, output);
     }
   } else {
-    if(node->isVisible) fillPolygons(node->shape.vertices, node->shape.indices, node->texture, node->shape.uv, node->shape.uvIndices, zBuffer, output);
+    if(node->isVisible) fillPolygons(&node->shape.vertices, &node->shape.indices, &node->texture, &node->shape.uv, &node->shape.uvIndices, zBuffer, output);
   }
   resetIteration(&node->children);
   child = previousData(&node->children);
@@ -202,11 +202,11 @@ void applyForce(Node *node, float force[3], int mask, int rotation) {
   if(mask & Z_MASK) node->force[2] += temp[2];
 }
 
-float (*getNodeTransformation(Node node, float out[4][4]))[4] {
+float (*getNodeTransformation(Node *node, float out[4][4]))[4] {
   float temp[4][4][4];
-  genTranslationMat4(node.position[0], node.position[1], node.position[2], temp[0]);
-  genRotationMat4(node.angle[0], node.angle[1], node.angle[2], temp[1]);
-  genScaleMat4(node.scale[0], node.scale[1], node.scale[2], temp[3]);
+  genTranslationMat4(node->position[0], node->position[1], node->position[2], temp[0]);
+  genRotationMat4(node->angle[0], node->angle[1], node->angle[2], temp[1]);
+  genScaleMat4(node->scale[0], node->scale[1], node->scale[2], temp[3]);
   mulMat4(mulMat4(temp[0], temp[1], temp[2]), temp[3], out);
   return out;
 }
@@ -217,17 +217,17 @@ float (*getWorldTransfomration(Node *node, float out[4][4]))[4] {
   while(current) {
     float temp[2][4][4];
     memcpy_s(temp[0], sizeof(temp[0]), out, sizeof(temp[0]));
-    getNodeTransformation(*current, temp[1]);
+    getNodeTransformation(current, temp[1]);
     mulMat4(temp[1], temp[0], out);
     current = current->parent;
   }
   return out;
 }
 
-int testCollision(Node a, Node b) {
-  return (a.aabb[0][0] <= b.aabb[0][1] && a.aabb[0][1] >= b.aabb[0][0]) &&
-         (a.aabb[1][0] <= b.aabb[1][1] && a.aabb[1][1] >= b.aabb[1][0]) &&
-         (a.aabb[2][0] <= b.aabb[2][1] && a.aabb[2][1] >= b.aabb[2][0]);
+int testCollision(Node *a, Node *b) {
+  return (a->aabb[0][0] <= b->aabb[0][1] && a->aabb[0][1] >= b->aabb[0][0]) &&
+         (a->aabb[1][0] <= b->aabb[1][1] && a->aabb[1][1] >= b->aabb[1][0]) &&
+         (a->aabb[2][0] <= b->aabb[2][1] && a->aabb[2][1] >= b->aabb[2][0]);
 }
 
 float (*mulMat4ByTriangle(float mat[4][4], float triangle[3][3], float out[3][3]))[3] {
@@ -245,14 +245,14 @@ float (*mulMat4ByTriangle(float mat[4][4], float triangle[3][3], float out[3][3]
   return out;
 }
 
-Vector* getPolygons(Node node, Vector *polygons) {
+static Vector* getPolygons(Node *node, Vector *polygons) {
 	size_t i1, i2;
-	resetIteration(&node.collisionShape.indices);
-	for(i1 = 0;i1 < node.collisionShape.indices.length / 3;i1++) {
+	resetIteration(&node->collisionShape.indices);
+	for(i1 = 0;i1 < node->collisionShape.indices.length / 3;i1++) {
     float *triangle = malloc(9 * sizeof(float));
     for(i2 = 0;i2 < 3;i2++) {
-			unsigned long index = *(unsigned long*)nextData(&node.collisionShape.indices);
-      float *data = dataAt(&node.collisionShape.vertices, index);
+			unsigned long index = *(unsigned long*)nextData(&node->collisionShape.indices);
+      float *data = dataAt(&node->collisionShape.vertices, index);
       triangle[i2 * 3] = data[0];
       triangle[i2 * 3 + 1] = data[1];
       triangle[i2 * 3 + 2] = data[2];
@@ -281,7 +281,7 @@ CollisionInfoNode2Node initCollisionInfoNode2Node(Node *nodeA, Node *nodeB, floa
   return info;
 }
 
-int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBOut) {
+int testCollisionPolygonPolygon(Node *a, Node *b, Vector *infoAOut, Vector *infoBOut) {
   unsigned long *normalIndex[2];
   unsigned long *uvIndex[2][3];
   Vector polygonsA = initVector();
@@ -290,50 +290,50 @@ int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBO
   int collided = FALSE;
   *infoAOut = initVector();
   *infoBOut = initVector();
-  resetIteration(&a.collisionShape.normalIndices);
-  normalIndex[0] = nextData(&a.collisionShape.normalIndices);
-  resetIteration(&a.collisionShape.uvIndices);
-  uvIndex[0][0] = nextData(&a.collisionShape.uvIndices);
-  uvIndex[0][1] = nextData(&a.collisionShape.uvIndices);
-  uvIndex[0][2] = nextData(&a.collisionShape.uvIndices);
+  resetIteration(&a->collisionShape.normalIndices);
+  normalIndex[0] = nextData(&a->collisionShape.normalIndices);
+  resetIteration(&a->collisionShape.uvIndices);
+  uvIndex[0][0] = nextData(&a->collisionShape.uvIndices);
+  uvIndex[0][1] = nextData(&a->collisionShape.uvIndices);
+  uvIndex[0][2] = nextData(&a->collisionShape.uvIndices);
   getPolygons(a, &polygonsA);
   getPolygons(b, &polygonsB);
   polygonA = nextData(&polygonsA);
   while(polygonA) {
     float polygonAWorld[3][3];
-    resetIteration(&b.collisionShape.normalIndices);
-    normalIndex[1] = nextData(&b.collisionShape.normalIndices);
-    resetIteration(&b.collisionShape.uvIndices);
-    uvIndex[1][0] = nextData(&b.collisionShape.uvIndices);
-    uvIndex[1][1] = nextData(&b.collisionShape.uvIndices);
-    uvIndex[1][2] = nextData(&b.collisionShape.uvIndices);
-    mulMat4ByTriangle(a.lastTransformation, polygonA, polygonAWorld);
+    resetIteration(&b->collisionShape.normalIndices);
+    normalIndex[1] = nextData(&b->collisionShape.normalIndices);
+    resetIteration(&b->collisionShape.uvIndices);
+    uvIndex[1][0] = nextData(&b->collisionShape.uvIndices);
+    uvIndex[1][1] = nextData(&b->collisionShape.uvIndices);
+    uvIndex[1][2] = nextData(&b->collisionShape.uvIndices);
+    mulMat4ByTriangle(a->lastTransformation, polygonA, polygonAWorld);
     resetIteration(&polygonsB);
     polygonB = nextData(&polygonsB);
     while(polygonB) {
       float polygonBWorld[3][3];
       float contacts[2][3];
       float depths[2];
-      mulMat4ByTriangle(b.lastTransformation, polygonB, polygonBWorld);
+      mulMat4ByTriangle(b->lastTransformation, polygonB, polygonBWorld);
       if(testCollisionTriangleTriangle(polygonAWorld, polygonBWorld, contacts, depths)) {
         CollisionInfoNode2Node infoA, infoB;
-        infoA = initCollisionInfoNode2Node(&a, &b, polygonA, *normalIndex[1], uvIndex[1], contacts, depths[0]);
-        infoB = initCollisionInfoNode2Node(&b, &a, polygonB, *normalIndex[0], uvIndex[0], contacts, depths[1]);
+        infoA = initCollisionInfoNode2Node(a, b, polygonA, *normalIndex[1], uvIndex[1], contacts, depths[0]);
+        infoB = initCollisionInfoNode2Node(b, a, polygonB, *normalIndex[0], uvIndex[0], contacts, depths[1]);
         pushAlloc(infoAOut, sizeof(CollisionInfoNode2Node), &infoA);
         pushAlloc(infoBOut, sizeof(CollisionInfoNode2Node), &infoB);
         collided = TRUE;
       }
       polygonB = nextData(&polygonsB);
-      normalIndex[1] = nextData(&b.collisionShape.normalIndices);
-      uvIndex[1][0] = nextData(&b.collisionShape.uvIndices);
-      uvIndex[1][1] = nextData(&b.collisionShape.uvIndices);
-      uvIndex[1][2] = nextData(&b.collisionShape.uvIndices);
+      normalIndex[1] = nextData(&b->collisionShape.normalIndices);
+      uvIndex[1][0] = nextData(&b->collisionShape.uvIndices);
+      uvIndex[1][1] = nextData(&b->collisionShape.uvIndices);
+      uvIndex[1][2] = nextData(&b->collisionShape.uvIndices);
     }
     polygonA = nextData(&polygonsA);
-    normalIndex[0] = nextData(&a.collisionShape.normalIndices);
-    uvIndex[0][0] = nextData(&a.collisionShape.uvIndices);
-    uvIndex[0][1] = nextData(&a.collisionShape.uvIndices);
-    uvIndex[0][2] = nextData(&a.collisionShape.uvIndices);
+    normalIndex[0] = nextData(&a->collisionShape.normalIndices);
+    uvIndex[0][0] = nextData(&a->collisionShape.uvIndices);
+    uvIndex[0][1] = nextData(&a->collisionShape.uvIndices);
+    uvIndex[0][2] = nextData(&a->collisionShape.uvIndices);
   }
   freeVector(&polygonsA);
   freeVector(&polygonsB);
@@ -635,18 +635,18 @@ static size_t getUntil(char *string, char *separators, size_t index, char *out, 
   return index + 1;
 }
 
-int initShapeFromObj(Shape *shape, char *filename) {
+Shape loadObj(char *filename) {
   FILE *file;
   char buffer[OBJ_LINE_BUFFER_SIZE];
   char temp[OBJ_WORD_BUFFER_SIZE];
   size_t line = 1;
   float aabb[3][2];
   BOOL aabbCleared = FALSE;
-  *shape = initShape();
+  Shape shape;
+  shape = initShape();
   if(fopen_s(&file, filename, "r")) {
     fputs("File not found.", stderr);
-    fclose(file);
-    return -1;
+    return shape;
   }
   while(fgets(buffer, OBJ_LINE_BUFFER_SIZE, file)) {
     int i;
@@ -658,7 +658,7 @@ int initShapeFromObj(Shape *shape, char *filename) {
       if(vertex == NULL) {
         fputs("readObj: Memory allocation failed.", stderr);
         fclose(file);
-        return -2;
+        return shape;
       }
       for(i = 0;i < 4;i++) {
         old_index = index;
@@ -669,7 +669,7 @@ int initShapeFromObj(Shape *shape, char *filename) {
           } else {
             fprintf(stderr, "readObj: Vertex component %d does not found. (%zu, %zu)", i, line, old_index);
             fclose(file);
-            return -3;
+            return shape;
           }
         } else {
           vertex->components[i] = (float)atof(temp);
@@ -691,13 +691,13 @@ int initShapeFromObj(Shape *shape, char *filename) {
         aabb[2][1] = vertex->components[2];
         aabbCleared = TRUE;
       }
-      push(&shape->vertices, vertex);
+      push(&shape.vertices, vertex);
     } else if(strcmp(temp, "vt") == 0) {
       float *coords = malloc(2 * sizeof(float));
       if(coords == NULL) {
         fputs("readObj: Memory allocation failed.", stderr);
         fclose(file);
-        return -4;
+        return shape;
       }
       for(i = 0;i < 2;i++) {
         old_index = index;
@@ -708,7 +708,7 @@ int initShapeFromObj(Shape *shape, char *filename) {
           } else {
             fprintf(stderr, "readObj: Terxture cordinates' component %d does not found. (%zu, %zu)", i, line, old_index);
             fclose(file);
-            return -5;
+            return shape;
           }
         } else {
           if(i == 1) {
@@ -718,14 +718,14 @@ int initShapeFromObj(Shape *shape, char *filename) {
           }
         }
       }
-      push(&shape->uv, coords);
+      push(&shape.uv, coords);
     } else if(strcmp(temp, "vn") == 0) {
       float normalTemp[3];
       float *normal = malloc(3 * sizeof(float));
       if(normal == NULL) {
         fputs("readObj: Memory allocation failed.", stderr);
         fclose(file);
-        return -9;
+        return shape;
       }
       for(i = 0;i < 3;i++) {
         old_index = index;
@@ -733,13 +733,13 @@ int initShapeFromObj(Shape *shape, char *filename) {
         if(temp[0] == '\0') {
           fprintf(stderr, "readObj: Vertex component %d does not found. (%zu, %zu)", i, line, old_index);
           fclose(file);
-          return -10;
+          return shape;
         } else {
           normalTemp[i] = (float)atof(temp);
         }
       }
       normalize3(normalTemp, normal);
-      push(&shape->normals, normal);
+      push(&shape.normals, normal);
     } else if(strcmp(temp, "f") == 0) {
       unsigned long faceIndices[3];
       unsigned long faceUVIndices[3];
@@ -747,7 +747,7 @@ int initShapeFromObj(Shape *shape, char *filename) {
       if(normalIndex == NULL) {
         fputs("readObj: Memory allocation failed.", stderr);
         fclose(file);
-        return -11;
+        return shape;
       }
       for(i = 0;i < 3;i++) {
         old_index = index;
@@ -755,14 +755,14 @@ int initShapeFromObj(Shape *shape, char *filename) {
         if(temp[0] == '\0') {
           fprintf(stderr, "readObj: Vertex component %d does not found. (%zu, %zu)", i, line, old_index);
           fclose(file);
-          return -6;
+          return shape;
         } else {
           size_t index2 = 0;
           char temp2[OBJ_WORD_BUFFER_SIZE];
           index2 = getUntil(temp, "/", index2, temp2, OBJ_WORD_BUFFER_SIZE);
           faceIndices[i] = atoi(temp2);
           if(faceIndices[i] < 0) {
-            faceIndices[i] += shape->vertices.length;
+            faceIndices[i] += shape.vertices.length;
           } else {
             faceIndices[i] -= 1;
           }
@@ -772,7 +772,7 @@ int initShapeFromObj(Shape *shape, char *filename) {
           } else {
             faceUVIndices[i] = atoi(temp2);
             if(faceUVIndices[i] < 0) {
-              faceUVIndices[i] += shape->uv.length;
+              faceUVIndices[i] += shape.uv.length;
             } else {
               faceUVIndices[i] -= 1;
             }
@@ -784,12 +784,12 @@ int initShapeFromObj(Shape *shape, char *filename) {
             } else {
               *normalIndex = atoi(temp2);
               if(*normalIndex < 0) {
-                *normalIndex += shape->normals.length;
+                *normalIndex += shape.normals.length;
               } else {
                 *normalIndex -= 1;
               }
             }
-            push(&shape->normalIndices, normalIndex);
+            push(&shape.normalIndices, normalIndex);
           }
         }
       }
@@ -799,32 +799,32 @@ int initShapeFromObj(Shape *shape, char *filename) {
         if(faceIndex == NULL || faceUVIndex == NULL) {
           fputs("readObj: Memory allocation failed.", stderr);
           fclose(file);
-          return -7;
+          return shape;
         }
         *faceIndex = faceIndices[i];
         *faceUVIndex = faceUVIndices[i];
-        push(&shape->indices, faceIndex);
-        push(&shape->uvIndices, faceUVIndex);
+        push(&shape.indices, faceIndex);
+        push(&shape.uvIndices, faceUVIndex);
       }
     } else if(temp[0] != '\0' && temp[0] != '#' && strcmp(temp, "vn") != 0 &&
               strcmp(temp, "vp") != 0 && strcmp(temp, "l") != 0 && strcmp(temp, "mtllib") != 0 &&
               strcmp(temp, "o") != 0 && strcmp(temp, "usemtl") != 0 && strcmp(temp, "s") != 0) {
       fprintf(stderr, "readObj: Unexpected word '%s' (%zu)", temp, line);
       fclose(file);
-      return -8;
+      return shape;
     }
     line += 1;
   }
-  genInertiaTensorBox(100.0F * shape->mass, fabsf(aabb[0][1] - aabb[0][0]), fabsf(aabb[1][1] - aabb[1][0]), fabsf(aabb[2][1] - aabb[2][0]), shape->inertia);
-  inverse3(shape->inertia, shape->inverseInertia);
+  genInertiaTensorBox(100.0F * shape.mass, fabsf(aabb[0][1] - aabb[0][0]), fabsf(aabb[1][1] - aabb[1][0]), fabsf(aabb[2][1] - aabb[2][0]), shape.inertia);
+  inverse3(shape.inertia, shape.inverseInertia);
   fclose(file);
-  return 0;
+  return shape;
 }
 
-float (*getShapeAABB(Shape shape, float transformation[4][4], float out[3][2]))[2] {
+float (*getShapeAABB(Shape *shape, float transformation[4][4], float out[3][2]))[2] {
   Vertex *vertex;
   int first = TRUE;
-  iterf(&shape.vertices, &vertex) {
+  iterf(&shape->vertices, &vertex) {
     float transformed[4];
     mulMat4Vec4(transformation, vertex->components, transformed);
     if(first) {
@@ -847,9 +847,9 @@ float (*getShapeAABB(Shape shape, float transformation[4][4], float out[3][2]))[
   return out;
 }
 
-void discardShape(Shape shape) {
-  freeVector(&shape.indices);
-  freeVector(&shape.vertices);
-  freeVector(&shape.uv);
-  freeVector(&shape.uvIndices);
+void discardShape(Shape *shape) {
+  freeVector(&shape->indices);
+  freeVector(&shape->vertices);
+  freeVector(&shape->uv);
+  freeVector(&shape->uvIndices);
 }

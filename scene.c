@@ -13,16 +13,18 @@
 
 #define VELOCITY_LIMIT 200.0F * 10000.0F / 3600.0F
 
-void initCamera(Camera *camera, float x, float y, float z) {
-  memset(camera, 0, sizeof(Camera));
-  camera->position[0] = x;
-  camera->position[1] = y;
-  camera->position[2] = z;
-  camera->worldUp[1] = 1.0F;
-  camera->fov = PI / 3.0F * 2.0F;
-  camera->nearLimit = 10.0F;
-  camera->farLimit = 1000.0F;
-  camera->sceneFilterAND = 0x0F;
+Camera initCamera(float x, float y, float z) {
+  Camera camera;
+  memset(&camera, 0, sizeof(Camera));
+  camera.position[0] = x;
+  camera.position[1] = y;
+  camera.position[2] = z;
+  camera.worldUp[1] = 1.0F;
+  camera.fov = PI / 3.0F * 2.0F;
+  camera.nearLimit = 10.0F;
+  camera.farLimit = 1000.0F;
+  camera.sceneFilterAND = 0x0F;
+  return camera;
 }
 
 Scene initScene(void) {
@@ -31,7 +33,7 @@ Scene initScene(void) {
   scene.acceleration[1] = -98.0F;
   scene.nodes = initVector();
   scene.speed = 1.0F;
-  initCamera(&scene.camera, 0.0F, 0.0F, 0.0F);
+  scene.camera = initCamera(0.0F, 0.0F, 0.0F);
   return scene;
 }
 
@@ -289,7 +291,7 @@ void updateSceneEx(Scene *scene, float rawElapsed, Camera *camera) {
     subVec3(node->force, mulVec3ByScalar(node->force, elapsed, temp), node->force);
     clearVec3(node->impulseForce);
     clearVec3(node->torque);
-    getShapeAABB(node->collisionShape, getWorldTransfomration(node, tempMat4), node->aabb);
+    getShapeAABB(&node->collisionShape, getWorldTransfomration(node, tempMat4), node->aabb);
     iterf(&node->collisionTargets, &info) freeVector(&info->info);
     freeVector(&node->collisionTargets);
     node->collisionFlags = 0;
@@ -308,7 +310,7 @@ void updateSceneEx(Scene *scene, float rawElapsed, Camera *camera) {
         unsigned int flagsB = node->collisionMaskActive & collisionTarget->collisionMaskPassive;
         if(!collisionTarget->isActive) continue;
         if(flagsA | flagsB) {
-          if(testCollision(*node, *collisionTarget)) {
+          if(testCollision(node, collisionTarget)) {
             if(node->physicsMode == PHYSICS_2D && collisionTarget->physicsMode == PHYSICS_2D) {
               if(is2dCollided(scene, camera, node, collisionTarget)) {
                 CollisionInfo userInfo = { 0 };
@@ -329,7 +331,7 @@ void updateSceneEx(Scene *scene, float rawElapsed, Camera *camera) {
               }
             } else {
               Vector infoA, infoB;
-              if(testCollisionPolygonPolygon(*node, *collisionTarget, &infoA, &infoB)) {
+              if(testCollisionPolygonPolygon(node, collisionTarget, &infoA, &infoB)) {
                 CollisionInfo userInfo;
                 if(!(node->isThrough || collisionTarget->isThrough)) {
                   float staticFriction, dynamicFriction, rollingFriction;

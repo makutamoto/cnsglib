@@ -110,12 +110,12 @@ void discardSprite(Node *node);
 
 void drawNode(Node *node, float zBuffer[], Node *replacedNode, int replaced, unsigned char filterAND, unsigned char filterOR, Image *output);
 void applyForce(Node *node, float force[3], int mask, int rotation);
-float (*getNodeTransformation(Node node, float out[4][4]))[4];
+float (*getNodeTransformation(Node *node, float out[4][4]))[4];
 float (*getWorldTransfomration(Node *node, float out[4][4]))[4];
 
 CollisionInfoNode2Node initCollisionInfoNode2Node(Node *nodeA, Node *nodeB, float triangle[3][3], unsigned long normalIndex, unsigned long *uvIndex[3], float contacts[2][3], float depth);
-int testCollision(Node a, Node b);
-int testCollisionPolygonPolygon(Node a, Node b, Vector *infoAOut, Vector *infoBOut);
+int testCollision(Node *a, Node *b);
+int testCollisionPolygonPolygon(Node *a, Node *b, Vector *infoAOut, Vector *infoBOut);
 IntervalEventNode* addIntervalEventNode(Node *node, float seconds, int (*callback)(Node*, void*), void *data);
 
 Shape initShape(void);
@@ -123,8 +123,8 @@ Shape initShapePlane(float width, float height, unsigned char color);
 Shape initShapePlaneV(float width, float height, unsigned char color);
 Shape initShapePlaneInv(float width, float height, unsigned char color);
 Shape initShapeBox(float width, float height, float depth, unsigned char color);
-int initShapeFromObj(Shape *shape, char *filename);
-float (*getShapeAABB(Shape shape, float transformation[4][4], float out[3][2]))[2];
-void discardShape(Shape shape);
+Shape loadObj(char *filename);
+float (*getShapeAABB(Shape *shape, float transformation[4][4], float out[3][2]))[2];
+void discardShape(Shape *shape);
 
 #endif
