@@ -31,10 +31,11 @@ void initScreen(short width, short height) {
 	COORD bufferSize;
 	#ifndef __BORLANDC__
 	CONSOLE_FONT_INFOEX font = { sizeof(CONSOLE_FONT_INFOEX) };
+	GetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &font);
 	#endif
 	screen = CreateConsoleScreenBuffer(GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
+	SetConsoleActiveScreenBuffer(screen);
 	#ifndef __BORLANDC__
-	GetCurrentConsoleFontEx(screen, FALSE, &font);
 	font.dwFontSize.X = 1;
 	font.dwFontSize.Y = 2;
 	SetCurrentConsoleFontEx(screen, FALSE, &font);
@@ -43,7 +44,6 @@ void initScreen(short width, short height) {
 	bufferSize.Y = height;
 	SetConsoleScreenBufferSize(screen, bufferSize);
 	SetConsoleCursorInfo(screen, &info);
-	SetConsoleActiveScreenBuffer(screen);
 	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 }
 

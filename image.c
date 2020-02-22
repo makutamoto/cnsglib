@@ -263,37 +263,27 @@ void drawRect(Image *image, int x, int y, int width, int height, unsigned char c
   freeImage(&rect);
 }
 
-Image genCircle(unsigned int radius, unsigned char color) {
-	Image image;
-	unsigned int edgeWidth = 2 * radius;
-	unsigned int y;
-	image.data = malloc(edgeWidth * edgeWidth);
-	if(image.data == NULL) {
-		image.width = 0;
-		image.height = 0;
-		image.transparent = NULL_COLOR;
-    image.transparentFilter = 0x0F;
-		image.data = NULL;
-		return image;
-	}
-	image.width = edgeWidth;
-	image.height = edgeWidth;
-	image.transparent = color ^ 0x0F;
-  image.transparentFilter = 0x0F;
-	for(y = 0;y < edgeWidth;y++) {
-		unsigned int x;
-		for(x = 0;x < edgeWidth;x++) {
-			int cx = (int)x - (int)radius;
-			int cy = (int)y - (int)radius;
-			size_t index = edgeWidth * y + x;
-			if(radius * radius >= (unsigned int)(cx * cx + cy * cy)) {
-				image.data[index] = color;
-			} else {
-				image.data[index] = image.transparent;
-			}
+void drawCircle(Image *image, int px, int py, int radius, unsigned char color) {
+	int y, x;
+  int minWidth, minHeight;
+  int maxWidth, maxHeight;
+  int squaredRadius;
+  minWidth = px - radius;
+  minHeight = py - radius;
+  maxWidth = px + radius;
+  maxHeight = py + radius;
+  squaredRadius = radius * radius;
+	for(y = minHeight;y <= maxHeight;y++) {
+		for(x = minWidth;x <= maxWidth;x++) {
+			int cx, cy;
+			long index = image->width * y + x;
+      cx = x - px;
+      cy = y - py;
+      if(!(x < 0 || y < 0 || x >= image->width || y >= image->height)) {
+        if(squaredRadius >= cx * cx + cy * cy) image->data[index] = color;
+      }
 		}
 	}
-	return image;
 }
 
 void freeImage(Image *image) {

@@ -45,7 +45,7 @@ void pasteImage(Image *dest, Image *src, int x, int y);
 void copyImage(Image *dest, Image *src);
 Image loadBitmapEx(char *fileName, unsigned char transparent, int allowNotFound);
 void drawRect(Image *image, int x, int y, int width, int height, unsigned char color);
-Image genCircle(unsigned int rad, unsigned char color);
+void drawCircle(Image *image, int px, int py, int radius, unsigned char color);
 void freeImage(Image *image);
 
 FontSJIS initFontSJIS(Image font0201, Image font0208, unsigned int width0201, unsigned int width0208, unsigned int height);
