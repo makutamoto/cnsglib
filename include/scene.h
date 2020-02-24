@@ -1,3 +1,9 @@
+/**
+* @file scene.h
+* \~english @brief Scene.
+* \~japanese @brief ƒV[ƒ“B
+*/
+
 #ifndef SCENE_H
 #define SCENE_H
 
@@ -17,17 +23,22 @@ typedef struct {
   float farLimit;
   float aspect;
   Node *parent;
+  Vector nodes;
+  Vector controllerList;
+  unsigned char sceneFilterAND;
+  unsigned char sceneFilterOR;
   int isRotationDisabled;
 } Camera;
 
-typedef struct _Scene {
+typedef struct Scene {
   float acceleration[3];
   Vector nodes;
   unsigned char background;
   Camera camera;
   Vector intervalEvents;
   float clock;
-  void (*behaviour)(struct _Scene*, float);
+  float speed;
+  void (*behaviour)(struct Scene*, float);
 } Scene;
 
 typedef struct {
@@ -36,18 +47,22 @@ typedef struct {
 } CollisionInfo;
 
 typedef struct {
-	clock_t begin;
-	unsigned int interval;
-	void (*callback)(Scene*);
+  float counter;
+	float seconds;
+  void *data;
+	int (*callback)(Scene*, void*);
 } IntervalEventScene;
 
-Camera initCamera(float x, float y, float z, float aspect);
+#define drawScene(scene, output) drawSceneEx((scene), (output), &(scene)->camera, NULL)
+#define updateScene(scene, elapsed) updateSceneEx(scene, elapsed, &(scene)->camera)
+
+Camera initCamera(float x, float y, float z);
 
 Scene initScene(void);
-void addIntervalEventScene(Scene *scene, unsigned int milliseconds, void (*callback)(Scene*));
-void drawSceneWithCamera(Scene *scene, Image *output, Camera *camera);
-void drawScene(Scene *scene, Image *output);
-void updateScene(Scene *scene, float elapsed);
+IntervalEventScene* addIntervalEventScene(Scene *scene, float seconds, int (*callback)(Scene*, void*), void *data);
+Node* getNodeByMask(Vector *nodes, unsigned int mask);
+void drawSceneEx(Scene *scene, Image *output, Camera *camera, Node *replacedNode);
+void updateSceneEx(Scene *scene, float rawElapsed, Camera *camera);
 void discardScene(Scene *scene);
 
 #endif

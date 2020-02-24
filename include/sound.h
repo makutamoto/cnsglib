@@ -1,3 +1,9 @@
+/**
+* @file sound.h
+* \~english @brief Sound.
+* \~japanese @brief âπÅB
+*/
+
 #ifndef SOUND_H
 #define SOUND_H
 

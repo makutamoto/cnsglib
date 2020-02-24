@@ -74,11 +74,6 @@ float cosVec3(float a[3], float b[3]) {
 	return dot3(a, b) / (length3(a) * length3(b));
 }
 
-float *clearVec3(float in[3]) {
-	memset(in, 0, 3 * sizeof(float));
-	return in;
-};
-
 float dot2(const float a[2], const float b[2]) {
 	return a[0] * b[0] + a[1] * b[1];
 }
@@ -128,19 +123,6 @@ float distance3(const float a[3], const float b[3]) {
 	position[1] = b[1] - a[1];
 	position[2] = b[2] - a[2];
 	return length3(position);
-}
-
-float distancePoint2(const float point[2], const float vector[2]) {
-	float vectorLen = length2(vector);
-	float projectedPointLen;
-	float projectedPoint[2];
-	float difference[2];
-	if(vectorLen == 0.0F) return length2(point);
-	projectedPointLen = dot2(point, vector) / vectorLen;
-	normalize2(vector, projectedPoint);
-	mulVec2ByScalar(projectedPoint, projectedPointLen, projectedPoint);
-	subVec2(point, projectedPoint, difference);
-	return length2(difference);
 }
 
 float* addVec2(const float a[2], const float b[2], float out[2]) {
@@ -857,26 +839,6 @@ float (*genInertiaTensorBox(float mass, float width, float height, float depth, 
 // 	out[2][2] = mass / 2.0F * ();
 // 	return out;
 // }
-
-void printVec3(float vec[3]) {
-	int i;
-	printf("(");
-	for(i = 0;i < 3;i++) {
-		printf("%10f", (double)vec[i]);
-		if(i != 2) printf(", ");
-	}
-	printf(")\n");
-}
-
-void printVec4(float vec[4]) {
-	int i;
-	printf("(");
-	for(i = 0;i < 4;i++) {
-		printf("%10f", (double)vec[i]);
-		if(i != 3) printf(", ");
-	}
-	printf(")\n");
-}
 
 void printMat3(float mat[3][3]) {
 	int row, col;

@@ -1,3 +1,9 @@
+/**
+* @file controller.h
+* \~english @brief Defines functions to read key inputs.
+* \~japanese @brief キー入力取得のための関数定義。
+*/
+
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 
@@ -15,11 +21,15 @@ typedef struct {
   void (*upEvent)(void);
 } ControllerData;
 
+#define initControllerData(key, down, up, dest) initControllerDataEx(NULL, key, down, up, dest)
+#define initControllerEvent(key, downEvent, upEvent) initControllerEventEx(NULL, key, downEvent, upEvent)
+#define initControllerDataCross(events, up, left, down, right, dest) initControllerDataCrossEx(NULL, events, up, left, down, right, dest)
+
 void initInput(void);
-ControllerData* initControllerData(WORD key, float down, float up, float *dest);
-ControllerData* initControllerEvent(WORD key, void (*downEvent)(void), void (*upEvent)(void));
-void initControllerDataCross(ControllerData *events[4], WORD up, WORD left, WORD down, WORD right, float dest[2]);
-void updateController(void);
+ControllerData* initControllerDataEx(Vector *list, WORD key, float down, float up, float *dest);
+ControllerData* initControllerEventEx(Vector *list, WORD key, void (*downEvent)(void), void (*upEvent)(void));
+void initControllerDataCrossEx(Vector *list, ControllerData *events[4], WORD up, WORD left, WORD down, WORD right, float dest[2]);
+void updateController(Vector *list, int update);
 void deinitInput(void);
 
 #endif

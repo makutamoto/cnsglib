@@ -33,7 +33,6 @@ void resetIteration(Vector *vector) {
 	vector->currentItem = NULL;
 }
 
-// pointer?
 void* nextData(Vector *vector) {
 	if(vector->currentItem == NULL) {
 		if(vector->firstItem == NULL) {
@@ -88,6 +87,7 @@ int push(Vector *vector, void *data) {
 	vector->lastItem = newItem;
 	vector->length += 1;
 	vector->cacheItem = NULL;
+	vector->modifiedCounter += 1;
 	return TRUE;
 }
 
@@ -140,6 +140,7 @@ void* pop(Vector *vector) {
 	}
 	vector->length -= 1;
 	vector->cacheItem = NULL;
+	vector->modifiedCounter += 1;
 	return data;
 }
 
@@ -214,6 +215,7 @@ int insertAt(Vector *vector, size_t index, void *data) {
 	}
 	vector->length += 1;
 	vector->cacheItem = NULL;
+	vector->modifiedCounter += 1;
 	return TRUE;
 }
 
@@ -234,6 +236,7 @@ void* removeAt(Vector *vector, size_t index) {
 	free(item);
 	vector->length -= 1;
 	vector->cacheItem = NULL;
+	vector->modifiedCounter += 1;
 	return data;
 }
 
@@ -263,24 +266,35 @@ void freeVector(Vector *vector) {
 VectorIter initVectorIter(Vector *vector) {
 	VectorIter iter;
 	iter.vector = vector;
+	iter.modifiedCounter = vector->modifiedCounter;
 	iter.currentItem = NULL;
 	return iter;
 }
 
 void* nextDataIter(VectorIter *iter) {
-	if(iter->currentItem == NULL) {
-		iter->currentItem = iter->vector->firstItem;
+	if(iter->modifiedCounter != iter->vector->modifiedCounter) {
+		iter->currentItem = NULL;
+		iter->modifiedCounter = iter->vector->modifiedCounter;
 	} else {
-		iter->currentItem = iter->currentItem->nextItem;
+		if(iter->currentItem == NULL) {
+			iter->currentItem = iter->vector->firstItem;
+		} else {
+			iter->currentItem = iter->currentItem->nextItem;
+		}
 	}
-	return (iter->currentItem == NULL) ? NULL : iter->currentItem->data;
+	return iter->currentItem == NULL ? NULL : iter->currentItem->data;
 }
 
 void* previousDataIter(VectorIter *iter) {
-	if(iter->currentItem == NULL) {
-		iter->currentItem = iter->vector->lastItem;
+	if(iter->modifiedCounter != iter->vector->modifiedCounter) {
+		iter->currentItem = NULL;
+		iter->modifiedCounter = iter->vector->modifiedCounter;
 	} else {
-		iter->currentItem = iter->currentItem->previousItem;
+		if(iter->currentItem == NULL) {
+			iter->currentItem = iter->vector->lastItem;
+		} else {
+			iter->currentItem = iter->currentItem->previousItem;
+		}
 	}
-	return (iter->currentItem == NULL) ? NULL : iter->currentItem->data;
+	return iter->currentItem == NULL ? NULL : iter->currentItem->data;
 }

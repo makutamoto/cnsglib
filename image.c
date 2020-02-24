@@ -7,6 +7,13 @@
 #include "./include/colors.h"
 
 Image NO_IMAGE;
+Image TRANSPARENT_IMAGE;
+Image BLACK_IMAGE;
+
+void initColorImages(void) {
+  TRANSPARENT_IMAGE = initImage(1, 1, BLACK, BLACK);
+  BLACK_IMAGE = initImage(1, 1, BLACK, NULL_COLOR);
+}
 
 unsigned long uvToIndex(const Image *image, float uv[2]) {
   unsigned int x, y;
@@ -21,6 +28,7 @@ Image initImage(unsigned int width, unsigned int height, unsigned char color, un
 	image.width = width;
 	image.height = height;
 	image.transparent = transparent;
+  image.transparentFilter = 0x0F;
 	image.data = malloc(imageSize);
 	memset(image.data, color, imageSize);
 	return image;
@@ -32,6 +40,7 @@ Image initImageBulk(unsigned int width, unsigned int height, unsigned char trans
 	image.width = width;
 	image.height = height;
 	image.transparent = transparent;
+  image.transparentFilter = 0x0F;
 	image.data = malloc(imageSize);
 	return image;
 }
@@ -40,30 +49,76 @@ void clearImage(Image *image, unsigned char color) {
 	memset(image->data, color, image->width * image->height);
 }
 
-void cropImage(Image dest, Image src, unsigned int xth, unsigned int yth) {
+int isImageOverlap(Image *imageA, Image *imageB) {
+  unsigned int x, y;
+  if(!isImageSameSize(*imageA, *imageB)) {
+    fprintf(stderr, "isImageOverlap: the image sizes must be the same.\n");
+    return FALSE;
+  }
+  for(x = 0;x < imageA->width;x++) {
+    for(y = 0;y < imageA->height;y++) {
+      size_t index = x + y * imageA->width;
+      if(imageA->data[index] == BLACK && imageB->data[index] == BLACK) return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+void replaceImageColor(Image *image, unsigned char from, unsigned char to) {
+  unsigned int x, y;
+  for(x = 0;x < image->width;x++) {
+    for(y = 0;y < image->height;y++) {
+      size_t index = x + y * image->width;
+      if(image->data[index] == from) image->data[index] = to;
+    }
+  }
+}
+
+void cropImage(Image *dest, Image *src, unsigned int xth, unsigned int yth) {
 	size_t ix, iy;
-	unsigned int x = dest.width * xth;
-	unsigned int y = dest.height * yth;
-	if(dest.width > src.width || dest.height > src.height) {
+	unsigned int x = dest->width * xth;
+	unsigned int y = dest->height * yth;
+  dest->transparent = src->transparent;
+  dest->transparentFilter = src->transparentFilter;
+	if(dest->width > src->width || dest->height > src->height) {
 		fprintf(stderr, "cropImage: the cropped size is bigger than original size.\n");
 	}
-	if(xth >= src.width / dest.width || yth >= src.height / dest.height) {
+	if(xth >= src->width / dest->width || yth >= src->height / dest->height) {
 		fprintf(stderr, "cropImage: the position is out of range: (%u, %u)\n", xth, yth);
 	}
-	for(iy = 0;iy + y < src.height && iy < dest.height;iy++) {
-		for(ix = 0;ix + x < src.width && ix < dest.width;ix++) {
-			dest.data[dest.width * iy + ix] = src.data[src.width * (iy + y) + ix + x];
+	for(iy = 0;iy + y < src->height && iy < dest->height;iy++) {
+		for(ix = 0;ix + x < src->width && ix < dest->width;ix++) {
+			dest->data[dest->width * iy + ix] = src->data[src->width * (iy + y) + ix + x];
 		}
 	}
 }
 
-void pasteImage(Image dest, Image src, unsigned int x, unsigned int y) {
-	size_t ix, iy;
-	for(iy = 0;iy < src.height && iy + y < dest.height;iy++) {
-		for(ix = 0;ix < src.width && ix + x < dest.width;ix++) {
-			dest.data[dest.width * (iy + y) + ix + x] = src.data[src.width * iy + ix];
+void pasteImage(Image *dest, Image *src, int x, int y) {
+	long ix, iy;
+	for(iy = 0;iy < (long)src->height && iy + y < (long)dest->height;iy++) {
+		for(ix = 0;ix < (long)src->width && ix + x < (long)dest->width;ix++) {
+      size_t srcIndex = src->width * iy + ix;
+      if(iy + y >= 0 && ix + x >= 0) {
+        size_t destIndex = dest->width * (iy + y) + ix + x;
+        if(src->data[srcIndex] == src->transparent) {
+          dest->data[destIndex] &= src->transparentFilter;
+        } else {
+          dest->data[destIndex] = src->data[srcIndex];
+        }
+      }
 		}
 	}
+}
+
+void copyImage(Image *dest, Image *src) {
+  size_t size;
+  size = src->width * src->height;
+  dest->width = src->width;
+  dest->height = src->height;
+  dest->transparent = src->transparent;
+  dest->transparentFilter = src->transparentFilter;
+  dest->data = malloc(size);
+  memcpy_s(dest->data, size, src->data, size);
 }
 
 FontSJIS initFontSJIS(Image font0201, Image font0208, unsigned int width0201, unsigned int width0208, unsigned int height) {
@@ -78,63 +133,62 @@ FontSJIS initFontSJIS(Image font0201, Image font0208, unsigned int width0201, un
 	return font;
 }
 
-BOOL drawCharSJIS(Image target, FontSJIS font, unsigned int x, unsigned int y, char *character) {
+BOOL drawCharSJIS(Image *target, FontSJIS *font, unsigned int x, unsigned int y, char *character) {
 	unsigned int fontx, fonty;
 	int ismultibyte;
 	Image image;
-	if((unsigned char)character[0] >= 0x81) {
+	if(isCharacterMultibyte((unsigned char)character[0])) {
 		unsigned int multibyte = (unsigned char)character[0] << 8 | (unsigned char)character[1];
 		fontx = multibyte & 0x0F;
-		fonty = ((multibyte - 0x8140) >> 4) - font.offset0208;
+		fonty = ((multibyte - 0x8140) >> 4) - font->offset0208;
 		ismultibyte = TRUE;
-		image = initImage(font.width[1], font.height, BLACK, NULL_COLOR);
-		cropImage(image, font.font0208, fontx, fonty);
+		image = initImage(font->width[1], font->height, BLACK, NULL_COLOR);
+		cropImage(&image, &font->font0208, fontx, fonty);
 	} else {
 		fontx = character[0] & 0x0F;
-		fonty = (character[0] >> 4) - font.offset0201;
-		ismultibyte = FALSE;
-		image = initImage(font.width[0], font.height, BLACK, NULL_COLOR);
-		cropImage(image, font.font0201, fontx, fonty);
+		fonty = ((character[0] >> 4) - font->offset0201) & 0x0F;
+    ismultibyte = FALSE;
+		image = initImage(font->width[0], font->height, BLACK, NULL_COLOR);
+		cropImage(&image, &font->font0201, fontx, fonty);
 	}
-	pasteImage(target, image, x, y);
-	freeImage(image);
+	pasteImage(target, &image, x, y);
+	freeImage(&image);
 
 	return ismultibyte;
 }
 
-void drawTextSJIS(Image target, FontSJIS font, unsigned int x, unsigned int y, char *text) {
+void drawTextSJIS(Image *target, FontSJIS *font, unsigned int x, unsigned int y, char *text) {
 	unsigned int dx = 0;
 	unsigned int dy = 0;
 	while(*text != '\0') {
 		switch(*text) {
 			case '\n':
 				dx = 0;
-				dy += font.height;
+				dy += font->height;
 				break;
 			case '\r':
 				break;
 			default:
 				if(drawCharSJIS(target, font, x + dx, y + dy, text)) {
-					dx += font.width[1];
+					dx += font->width[1];
 					text += 1;
 				} else {
-					dx += font.width[0];
+					dx += font->width[0];
 				}
 		}
 		text += 1;
 	}
 }
 
-Image loadBitmap(char *fileName, unsigned char transparent) {
-	Image image = { 0, 0, NULL_COLOR, NULL };
+Image loadBitmapEx(char *fileName, unsigned char transparent, int allowNotFound) {
+	Image image = { 0, 0, NULL_COLOR, 0, NULL };
 	FILE *file;
 	BitmapHeader header;
 	BitmapInfoHeader infoHeader;
 	uint32_t *img;
 	unsigned int y;
 	if(fopen_s(&file, fileName, "rb")) {
-		fprintf(stderr, "Failed to open the file '%s'\n", fileName);
-		fclose(file);
+		if(!allowNotFound) fprintf(stderr, "Failed to open the file '%s'\n", fileName);
 		return image;
 	}
 	if(fread_s(&header, sizeof(BitmapHeader), 1, sizeof(BitmapHeader), file) != sizeof(BitmapHeader)) {
@@ -181,6 +235,7 @@ Image loadBitmap(char *fileName, unsigned char transparent) {
 	image.width = (unsigned int)infoHeader.width;
 	image.height = (unsigned int)infoHeader.height;
 	image.transparent = transparent;
+  image.transparentFilter = 0x0F;
 	image.data = (unsigned char*)malloc(image.width * image.height);
 	for(y = 0;y < image.height;y++) {
 		unsigned int x;
@@ -201,58 +256,37 @@ Image loadBitmap(char *fileName, unsigned char transparent) {
 	return image;
 }
 
-Image genRect(unsigned int width, unsigned int height, unsigned char color) {
-	Image image;
-	unsigned int y;
-	image.data = (unsigned char*)malloc(width * height);
-	if(image.data == NULL) {
-		image.width = 0;
-		image.height = 0;
-		image.transparent = NULL_COLOR;
-		image.data = NULL;
-		return image;
-	}
-	image.width = width;
-	image.height = height;
-	image.transparent = NULL_COLOR;
-	for(y = 0;y < image.height;y++) {
-    unsigned int x;
-    for(x = 0;x < image.width;x++) image.data[image.width * y + x] = color;
-	}
-	return image;
+void drawRect(Image *image, int x, int y, int width, int height, unsigned char color) {
+	Image rect;
+  rect = initImage(width, height, color, NULL_COLOR);
+  pasteImage(image, &rect, x, y);
+  freeImage(&rect);
 }
 
-Image genCircle(unsigned int radius, unsigned char color) {
-	Image image;
-	unsigned int edgeWidth = 2 * radius;
-	unsigned int y;
-	image.data = malloc(edgeWidth * edgeWidth);
-	if(image.data == NULL) {
-		image.width = 0;
-		image.height = 0;
-		image.transparent = NULL_COLOR;
-		image.data = NULL;
-		return image;
-	}
-	image.width = edgeWidth;
-	image.height = edgeWidth;
-	image.transparent = color ^ 0x0F;
-	for(y = 0;y < edgeWidth;y++) {
-		unsigned int x;
-		for(x = 0;x < edgeWidth;x++) {
-			int cx = (int)x - (int)radius;
-			int cy = (int)y - (int)radius;
-			size_t index = edgeWidth * y + x;
-			if(radius * radius >= (unsigned int)(cx * cx + cy * cy)) {
-				image.data[index] = color;
-			} else {
-				image.data[index] = image.transparent;
-			}
+void drawCircle(Image *image, int px, int py, int radius, unsigned char color) {
+	int y, x;
+  int minWidth, minHeight;
+  int maxWidth, maxHeight;
+  int squaredRadius;
+  minWidth = px - radius;
+  minHeight = py - radius;
+  maxWidth = px + radius;
+  maxHeight = py + radius;
+  squaredRadius = radius * radius;
+	for(y = minHeight;y <= maxHeight;y++) {
+		for(x = minWidth;x <= maxWidth;x++) {
+			int cx, cy;
+			long index = image->width * y + x;
+      cx = x - px;
+      cy = y - py;
+      if(!(x < 0 || y < 0 || x >= image->width || y >= image->height)) {
+        if(squaredRadius >= cx * cx + cy * cy) image->data[index] = color;
+      }
 		}
 	}
-	return image;
 }
 
-void freeImage(Image image) {
-	free(image.data);
+void freeImage(Image *image) {
+	free(image->data);
+  memset(image, 0, sizeof(Image));
 }
