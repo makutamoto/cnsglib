@@ -11,8 +11,6 @@
 #include "./include/colors.h"
 #include "./include/manager.h"
 
-#define VELOCITY_LIMIT 200.0F * 10000.0F / 3600.0F
-
 Camera initCamera(float x, float y, float z) {
   Camera camera;
   memset(&camera, 0, sizeof(Camera));
@@ -113,7 +111,7 @@ void drawSceneEx(Scene *scene, Image *output, Camera *camera, Node *replacedNode
   free(zBuffer);
 }
 
-static void impulseNodes(Node *nodeA, Node *nodeB, float normal[3], float point[3]) {
+static void impulseNodes(Node *nodeA, Node *nodeB, float normal[3], float point[3], float depth) {
   float temp[2][3];
   float velocity[3];
   float impulse[3];
@@ -129,21 +127,17 @@ static void impulseNodes(Node *nodeA, Node *nodeB, float normal[3], float point[
   impulseNumerator = - (1.0F + restitution) * dot3(velocity, normal);
   if(impulseNumerator <= 0) return;
   impulseDenominator = 1.0F / nodeA->collisionShape.mass + dot3(cross(mulMat3Vec3(nodeA->collisionShape.worldInverseInertia, cross(point, normal, temp[0]), temp[1]), point, temp[0]), normal);
-  impulseCoefficient = impulseNumerator / impulseDenominator;
+  impulseCoefficient = impulseNumerator / impulseDenominator - 2.0F * depth;
   mulVec3ByScalar(normal, impulseCoefficient, impulse);
   divVec3ByScalar(impulse, nodeA->collisionShape.mass, temp[0]);
   nodeVelocityNormal = -dot3(nodeA->velocity, normal);
-  // if(length3(temp[0]) < nodeVelocityNormal) {
-  //   normalize3(temp[0], temp[1]);
-  //   mulVec3ByScalar(temp[1], nodeVelocityNormal, temp[0]);
-  // }
+  if(length3(temp[0]) < nodeVelocityNormal) {
+    normalize3(temp[0], temp[1]);
+    mulVec3ByScalar(temp[1], nodeVelocityNormal, temp[0]);
+  }
   addVec3(nodeA->velocity, temp[0], nodeA->velocity);
   addVec3(nodeA->angMomentum, cross(point, impulse, temp[0]), nodeA->angMomentum);
   mulMat3Vec3(nodeA->collisionShape.worldInverseInertia, nodeA->angMomentum, nodeA->angVelocity);
-  if(length3(nodeA->velocity) > VELOCITY_LIMIT) {
-		normalize3(nodeA->velocity, temp[0]);
-		mulVec3ByScalar(temp[0], VELOCITY_LIMIT, nodeA->velocity);
-	}
   // subVec3(relativeVelocity, mulVec3ByScalar(normal, dot3(relativeVelocity, normal), temp[0]), temp[1]);
   // normalize3(temp[1], tangent);
   // staticImpulse = - dot3(relativeVelocity, tangent) / (1.0F / nodeA->collisionShape.mass + 1.0F / nodeB->collisionShape.mass);
@@ -176,15 +170,8 @@ static void collideNodes(Node *nodeA, Node *nodeB, Vector *info, float staticFri
   CollisionInfoNode2Node *collisionInfo;
   if(nodeA->physicsMode == PHYSICS_3D) {
     iterf(info, &collisionInfo) {
-      if(info->firstItem->data == collisionInfo) {
-        float tempVec3[1][3];
-        mulVec3ByScalar(collisionInfo->normal, -collisionInfo->depth, tempVec3[0]);
-        addVec3(nodeA->position, tempVec3[0], nodeA->position);
-        subVec3(collisionInfo->contacts[0], tempVec3[0], collisionInfo->contacts[0]);
-        subVec3(collisionInfo->contacts[1], tempVec3[0], collisionInfo->contacts[1]);
-      }
-      impulseNodes(nodeA, nodeB, collisionInfo->normal, collisionInfo->contacts[0]);
-      impulseNodes(nodeA, nodeB, collisionInfo->normal, collisionInfo->contacts[1]);
+      impulseNodes(nodeA, nodeB, collisionInfo->normal, collisionInfo->contacts[0], collisionInfo->depth);
+      impulseNodes(nodeA, nodeB, collisionInfo->normal, collisionInfo->contacts[1], collisionInfo->depth);
       iterf(&checkedNormals, &checkedNormal) {
         if(cosVec3(collisionInfo->normal, checkedNormal) >= 0.9F) checkedFlag = TRUE;
       }
@@ -236,7 +223,7 @@ static int is2dCollided(Scene *scene, Camera *camera, Node *node, Node *collisio
   return FALSE;
 }
 
-static void runNodeBehaviour(Scene *scene, Node *node, float elapsed) {
+static void runNodeBehaviour(Node *node, float elapsed) {
   IntervalEventNode *interval;
   if(!node->isActive) return;
   if(node->behaviour != NULL) {
@@ -275,9 +262,10 @@ void updateSceneEx(Scene *scene, float rawElapsed, Camera *camera) {
     node->previousPosition[1] = node->position[1];
     if(node->collisionShape.mass != 0.0F) {
       if(node->isGravityEnabled) addVec3(node->force, mulVec3ByScalar(scene->acceleration, elapsed * node->collisionShape.mass, temp), node->force);
+      if(node->physicsMode == PHYSICS_3D) addVec3(node->position, mulVec3ByScalar(node->velocity, elapsed, temp), node->position);
       addVec3(node->velocity, mulVec3ByScalar(node->force, elapsed / node->collisionShape.mass, temp), node->velocity);
       addVec3(node->velocity, divVec3ByScalar(node->impulseForce, node->collisionShape.mass, temp), node->velocity);
-      addVec3(node->position, mulVec3ByScalar(node->velocity, elapsed, temp), node->position);
+      if(node->physicsMode == PHYSICS_2D) addVec3(node->position, mulVec3ByScalar(node->velocity, elapsed, temp), node->position);
       genRotationMat4(node->angle[0], node->angle[1], node->angle[2], tempMat4);
       convMat4toMat3(tempMat4, orientation);
       genSkewMat3(node->angVelocity, tempMat3[0]);
@@ -356,9 +344,9 @@ void updateSceneEx(Scene *scene, float rawElapsed, Camera *camera) {
       }
     }
   }
-  for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) runNodeBehaviour(scene, node, elapsed);
+  for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) runNodeBehaviour(node, elapsed);
   cameraIter = initNodeIter(&camera->nodes);
-  for(node = nextNode(&cameraIter);node != NULL;node = nextNode(&cameraIter)) runNodeBehaviour(scene, node, elapsed);
+  for(node = nextNode(&cameraIter);node != NULL;node = nextNode(&cameraIter)) runNodeBehaviour(node, elapsed);
   if(scene->behaviour) scene->behaviour(scene, elapsed);
   resetIteration(&scene->intervalEvents);
   intervalScene = nextData(&scene->intervalEvents);

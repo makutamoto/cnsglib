@@ -187,6 +187,21 @@ void drawNode(Node *node, float zBuffer[], Node *replacedNode, int replaced, uns
   popTransformation();
 }
 
+void applyImpulseForce(Node *node, float force[3], int mask, int rotation) {
+  float temp[3];
+  float tempMat4[4][4];
+  float tempMat3[3][3];
+  if(rotation) {
+    genRotationMat4(node->angle[0], node->angle[1], node->angle[2], tempMat4);
+    mulMat3Vec3(convMat4toMat3(tempMat4, tempMat3), force, temp);
+  } else {
+    memcpy_s(temp, SIZE_VEC3, force, SIZE_VEC3);
+  }
+  if(mask & X_MASK) node->impulseForce[0] += temp[0];
+  if(mask & Y_MASK) node->impulseForce[1] += temp[1];
+  if(mask & Z_MASK) node->impulseForce[2] += temp[2];
+}
+
 void applyForce(Node *node, float force[3], int mask, int rotation) {
   float temp[3];
   float tempMat4[4][4];
@@ -202,22 +217,25 @@ void applyForce(Node *node, float force[3], int mask, int rotation) {
   if(mask & Z_MASK) node->force[2] += temp[2];
 }
 
-float (*getNodeTransformation(Node *node, float out[4][4]))[4] {
+float (*getNodeTransformation(Node *node, float out[4][4], unsigned int mask))[4] {
   float temp[4][4][4];
-  genTranslationMat4(node->position[0], node->position[1], node->position[2], temp[0]);
-  genRotationMat4(node->angle[0], node->angle[1], node->angle[2], temp[1]);
-  genScaleMat4(node->scale[0], node->scale[1], node->scale[2], temp[3]);
+  if(mask & TRANSLATION_MASK) genTranslationMat4(node->position[0], node->position[1], node->position[2], temp[0]);
+  else genIdentityMat4(temp[0]);
+  if(mask & ROTATION_MASK) genRotationMat4(node->angle[0], node->angle[1], node->angle[2], temp[1]);
+  else genIdentityMat4(temp[1]);
+  if(mask & SCALE_MASK) genScaleMat4(node->scale[0], node->scale[1], node->scale[2], temp[3]);
+  else genIdentityMat4(temp[3]);
   mulMat4(mulMat4(temp[0], temp[1], temp[2]), temp[3], out);
   return out;
 }
 
-float (*getWorldTransfomration(Node *node, float out[4][4]))[4] {
+float (*getWorldTransfomrationEx(Node *node, float out[4][4], unsigned int mask))[4] {
   Node *current = node;
   genIdentityMat4(out);
   while(current) {
     float temp[2][4][4];
     memcpy_s(temp[0], sizeof(temp[0]), out, sizeof(temp[0]));
-    getNodeTransformation(current, temp[1]);
+    getNodeTransformation(current, temp[1], mask);
     mulMat4(temp[1], temp[0], out);
     current = current->parent;
   }
@@ -361,6 +379,15 @@ Shape initShape(void) {
   shape.uvIndices = initVector();
   shape.mass = 1.0F;
   return shape;
+}
+
+void setNodeMass(Node *node, float mass) {
+  float aabb[3][2];
+  float tempMat4[1][4][4];
+  node->collisionShape.mass = mass;
+  getShapeAABB(&node->collisionShape, getWorldTransfomrationEx(node, tempMat4[0], SCALE_MASK), aabb);
+  genInertiaTensorBox(node->collisionShape.mass, aabb[0][1] - aabb[0][0], aabb[1][1] - aabb[1][0], aabb[2][1] - aabb[2][0], node->collisionShape.inertia);
+  inverse3(node->collisionShape.inertia, node->collisionShape.inverseInertia);
 }
 
 Shape initShapePlane(float width, float height, unsigned char color) {

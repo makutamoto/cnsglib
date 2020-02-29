@@ -97,6 +97,12 @@ typedef struct {
 	float depth;
 } CollisionInfoNode2Node;
 
+#define TRANSLATION_MASK 0x01
+#define ROTATION_MASK 0x02
+#define SCALE_MASK 0x04
+
+#define getWorldTransfomration(node, out) getWorldTransfomrationEx(node, out, TRANSLATION_MASK | ROTATION_MASK | SCALE_MASK)
+
 Node initNode(const char *id, Image image);
 Node initNodeUI(const char *id, Image image, unsigned char color);
 Node initNodeSprite(const char *id, float width, float height, Image texture, Image collisionTexture);
@@ -109,9 +115,10 @@ void discardNode(Node *node);
 void discardSprite(Node *node);
 
 void drawNode(Node *node, float zBuffer[], Node *replacedNode, int replaced, unsigned char filterAND, unsigned char filterOR, Image *output);
+void applyImpulseForce(Node *node, float force[3], int mask, int rotation);
 void applyForce(Node *node, float force[3], int mask, int rotation);
-float (*getNodeTransformation(Node *node, float out[4][4]))[4];
-float (*getWorldTransfomration(Node *node, float out[4][4]))[4];
+float (*getNodeTransformation(Node *node, float out[4][4], unsigned int mask))[4];
+float (*getWorldTransfomrationEx(Node *node, float out[4][4], unsigned int mask))[4];
 
 CollisionInfoNode2Node initCollisionInfoNode2Node(Node *nodeA, Node *nodeB, float triangle[3][3], unsigned long normalIndex, unsigned long *uvIndex[3], float contacts[2][3], float depth);
 int testCollision(Node *a, Node *b);
@@ -119,6 +126,7 @@ int testCollisionPolygonPolygon(Node *a, Node *b, Vector *infoAOut, Vector *info
 IntervalEventNode* addIntervalEventNode(Node *node, float seconds, int (*callback)(Node*, void*), void *data);
 
 Shape initShape(void);
+void setNodeMass(Node *node, float mass);
 Shape initShapePlane(float width, float height, unsigned char color);
 Shape initShapePlaneV(float width, float height, unsigned char color);
 Shape initShapePlaneInv(float width, float height, unsigned char color);

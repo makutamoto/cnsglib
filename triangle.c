@@ -106,8 +106,8 @@ int testCollisionTriangleTriangle(const float a[3][3], const float b[3][3], floa
   if(dv2[0] == 0.0F && dv2[1] == 0.0F && dv2[2] == 0.0F) return FALSE;
   cross(n1, n2, tempVec3[0]);
   normalize3(tempVec3[0], d);
-  depths[1] = calcLineParameters(a, d, dv2, t1, v1);
-  depths[0] = calcLineParameters(b, d, dv1, t2, v2);
+  depths[0] = calcLineParameters(a, d, dv2, t1, v1);
+  depths[1] = calcLineParameters(b, d, dv1, t2, v2);
   if(t1[0] > t1[1]) {
     t1MinMax[0] = t1[1];
     t1MinMax[1] = t1[0];
