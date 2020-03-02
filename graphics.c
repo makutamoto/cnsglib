@@ -25,14 +25,17 @@ static Vector matrixStore;
 static unsigned int currentStore = 0;
 static unsigned char colorFilterAND = 0x0F;
 static unsigned char colorFilterOR;
+static int screenSize[2];
 
-void initScreen(short width, short height) {
+void initScreen(int width, int height) {
 	CONSOLE_CURSOR_INFO info = { 1, FALSE };
 	COORD bufferSize;
 	#ifndef __BORLANDC__
 	CONSOLE_FONT_INFOEX font = { sizeof(CONSOLE_FONT_INFOEX) };
 	GetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &font);
 	#endif
+	screenSize[0] = width;
+	screenSize[1] = height;
 	screen = CreateConsoleScreenBuffer(GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
 	SetConsoleActiveScreenBuffer(screen);
 	#ifndef __BORLANDC__
@@ -45,6 +48,12 @@ void initScreen(short width, short height) {
 	SetConsoleScreenBufferSize(screen, bufferSize);
 	SetConsoleCursorInfo(screen, &info);
 	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+}
+
+int* getScreenSize(int size[2]) {
+	size[0] = screenSize[0];
+	size[1] = screenSize[1];
+	return size;
 }
 
 void setDivideByZ(int value) {

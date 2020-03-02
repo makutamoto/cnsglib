@@ -7,6 +7,8 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
+#include "./borland.h"
+
 typedef struct VectorItem {
 	struct VectorItem *previousItem;
 	struct VectorItem *nextItem;

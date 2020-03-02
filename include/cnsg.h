@@ -24,9 +24,10 @@
 #pragma comment(lib, "Winmm.lib")
 #endif
 
-void initCNSG(int argc, char *argv[], unsigned int width, unsigned int height);
+WindowManager* initCNSG(int argc, char *argv[], unsigned int width, unsigned int height);
 void deinitCNSG(void);
 float elapsedTime(LARGE_INTEGER start);
+void getScreenShot(Image *image);
 int getSleepFlag(void);
 void gameLoop(unsigned int fps);
 

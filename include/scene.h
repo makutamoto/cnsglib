@@ -62,6 +62,7 @@ Scene initScene(void);
 IntervalEventScene* addIntervalEventScene(Scene *scene, float seconds, int (*callback)(Scene*, void*), void *data);
 Node* getNodeByMask(Vector *nodes, unsigned int mask);
 void drawSceneEx(Scene *scene, Image *output, Camera *camera, Node *replacedNode);
+void updateCamera(Camera *camera, float elapsed);
 void updateSceneEx(Scene *scene, float rawElapsed, Camera *camera);
 void discardScene(Scene *scene);
 

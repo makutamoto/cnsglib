@@ -4,6 +4,8 @@
 
 static LARGE_INTEGER frequency;
 static Image screenImage;
+static WindowManager rootManager;
+
 static int initialized;
 static int sleep;
 
@@ -12,14 +14,16 @@ static int WINAPI ctrlCHandler(DWORD dwCtrlType) {
   return TRUE;
 }
 
-void initCNSG(int argc, char *argv[], unsigned int width, unsigned int height) {
+WindowManager* initCNSG(int argc, char *argv[], unsigned int width, unsigned int height) {
   initSound(argc, argv);
   initInput();
 	initScreen(width, height);
   initColorImages();
   SetConsoleCtrlHandler(ctrlCHandler, TRUE);
+  rootManager = initWindowManager(NULL);
   screenImage = initImage(width, height, BLACK, NULL_COLOR);
   initialized = TRUE;
+  return &rootManager;
 }
 
 void deinitCNSG(void) {
@@ -35,6 +39,10 @@ float elapsedTime(LARGE_INTEGER start) {
 	QueryPerformanceCounter(&current);
 	elapsed.QuadPart = current.QuadPart - start.QuadPart;
 	return (float)elapsed.QuadPart / frequency.QuadPart;
+}
+
+void getScreenShot(Image *image) {
+  copyImage(image, &screenImage);
 }
 
 int getSleepFlag(void) {
@@ -53,12 +61,10 @@ void gameLoop(unsigned int fps) {
       sleep = TRUE;
     }
 		QueryPerformanceCounter(&previousClock);
-    if(drawCurrentScene(&screenImage, elapsed)) {
-      updateCurrentController(TRUE);
-      updateCurrentScene(elapsed);
-    } else {
-      updateCurrentController(FALSE);
-    }
+    clearImage(&screenImage, BLACK);
+    drawWindowManager(&rootManager, &screenImage, elapsed);
+    updateWindowManagerController(&rootManager);
+    updateWindowManager(&rootManager, elapsed);
 		flushBuffer(&screenImage);
 		while(elapsedTime(previousClock) < delay);
 	}

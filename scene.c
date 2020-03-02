@@ -244,9 +244,16 @@ static void runNodeBehaviour(Node *node, float elapsed) {
   }
 }
 
+void updateCamera(Camera *camera, float elapsed) {
+  Node *node;
+  NodeIter cameraIter;
+  cameraIter = initNodeIter(&camera->nodes);
+  for(node = nextNode(&cameraIter);node != NULL;node = nextNode(&cameraIter)) runNodeBehaviour(node, elapsed);
+}
+
 void updateSceneEx(Scene *scene, float rawElapsed, Camera *camera) {
   Node *node;
-  NodeIter iter, cameraIter;
+  NodeIter iter;
   IntervalEventScene *intervalScene;
   float elapsed = scene->speed * rawElapsed;
   scene->clock += elapsed;
@@ -345,8 +352,7 @@ void updateSceneEx(Scene *scene, float rawElapsed, Camera *camera) {
     }
   }
   for(node = nextNode(&iter);node != NULL;node = nextNode(&iter)) runNodeBehaviour(node, elapsed);
-  cameraIter = initNodeIter(&camera->nodes);
-  for(node = nextNode(&cameraIter);node != NULL;node = nextNode(&cameraIter)) runNodeBehaviour(node, elapsed);
+  updateCamera(camera, elapsed);
   if(scene->behaviour) scene->behaviour(scene, elapsed);
   resetIteration(&scene->intervalEvents);
   intervalScene = nextData(&scene->intervalEvents);

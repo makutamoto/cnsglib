@@ -17,7 +17,8 @@ typedef struct {
 	unsigned char color;
 } Vertex;
 
-void initScreen(short width, short height);
+void initScreen(int width, int height);
+int* getScreenSize(int size[2]);
 void setDivideByZ(int value);
 void setFakeZ(int use, float val);
 void setZNear(float value);

@@ -14,6 +14,7 @@
 void initSound(int argc, char *argv[]);
 Sound PlaySoundNeo(const char path[], int loop);
 void StopSound(Sound sound);
+void StopAllSound(void);
 void deinitSound(void);
 
 #endif

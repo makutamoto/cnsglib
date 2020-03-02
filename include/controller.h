@@ -17,19 +17,27 @@ typedef struct {
   float valueUp;
   float *dest;
   int state;
+  int previousState;
   void (*downEvent)(void);
   void (*upEvent)(void);
 } ControllerData;
 
-#define initControllerData(key, down, up, dest) initControllerDataEx(NULL, key, down, up, dest)
-#define initControllerEvent(key, downEvent, upEvent) initControllerEventEx(NULL, key, downEvent, upEvent)
-#define initControllerDataCross(events, up, left, down, right, dest) initControllerDataCrossEx(NULL, events, up, left, down, right, dest)
+typedef struct {
+  ControllerData *data[4];
+  float states[2];
+} ControllerDataCross;
+
+typedef struct {
+  Vector *list;
+  int update;
+} ControllerListData;
 
 void initInput(void);
-ControllerData* initControllerDataEx(Vector *list, WORD key, float down, float up, float *dest);
-ControllerData* initControllerEventEx(Vector *list, WORD key, void (*downEvent)(void), void (*upEvent)(void));
-void initControllerDataCrossEx(Vector *list, ControllerData *events[4], WORD up, WORD left, WORD down, WORD right, float dest[2]);
-void updateController(Vector *list, int update);
+ControllerData* initControllerData(Vector *list, WORD key);
+ControllerData* initControllerEvent(Vector *list, WORD key, void (*downEvent)(void), void (*upEvent)(void));
+ControllerDataCross* initControllerDataCross(Vector *list, WORD up, WORD left, WORD down, WORD right);
+void registerControllerList(Vector *list, int update);
+void updateController(void);
 void deinitInput(void);
 
 #endif

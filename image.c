@@ -279,7 +279,7 @@ void drawCircle(Image *image, int px, int py, int radius, unsigned char color) {
 			long index = image->width * y + x;
       cx = x - px;
       cy = y - py;
-      if(!(x < 0 || y < 0 || x >= image->width || y >= image->height)) {
+      if(!(x < 0 || y < 0 || x >= (int)image->width || y >= (int)image->height)) {
         if(squaredRadius >= cx * cx + cy * cy) image->data[index] = color;
       }
 		}

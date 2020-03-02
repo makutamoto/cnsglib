@@ -8,38 +8,55 @@
 
 static HANDLE input;
 static INPUT_RECORD inputRecords[NOF_MAX_EVENTS];
-static Vector controllerList;
+static Vector registeredControllerLists;
 
 void initInput(void) {
   input = GetStdHandle(STD_INPUT_HANDLE);
+  registeredControllerLists = initVector();
 }
 
-ControllerData* initControllerDataEx(Vector *list, WORD key, float down, float up, float *dest) {
+ControllerData* initControllerData(Vector *list, WORD key) {
   ControllerData *event = calloc(1, sizeof(ControllerData));
   event->key = key;
-  event->valueDown = down;
-  event->valueUp = up;
-  event->dest = dest;
-  push(list ? list : &controllerList, event);
+  event->valueDown = 1.0F;
+  event->valueUp = 0.0F;
+  push(list, event);
   return event;
 }
 
-ControllerData* initControllerEventEx(Vector *list, WORD key, void (*downEvent)(void), void (*upEvent)(void)) {
+ControllerData* initControllerEvent(Vector *list, WORD key, void (*downEvent)(void), void (*upEvent)(void)) {
   ControllerData *event = calloc(1, sizeof(ControllerData));
   event->key = key;
   event->downEvent = downEvent;
   event->upEvent = upEvent;
-  push(list ? list : &controllerList, event);
+  push(list, event);
   return event;
 }
 
-void initControllerDataCrossEx(Vector *list, ControllerData *events[4], WORD up, WORD left, WORD down, WORD right, float dest[2]) {
-  ControllerData *data[4];
-  data[0] = initControllerDataEx(list, up, 1.0F, 0.0F, &dest[1]);
-  data[1] = initControllerDataEx(list, left, -1.0F, 0.0F, &dest[0]);
-  data[2] = initControllerDataEx(list, down, -1.0F, 0.0F, &dest[1]);
-  data[3] = initControllerDataEx(list, right, 1.0F, 0.0F, &dest[0]);
-  if(events != NULL) memcpy_s(events, 4 * sizeof(ControllerData), data, sizeof(data));
+ControllerDataCross* initControllerDataCross(Vector *list, WORD up, WORD left, WORD down, WORD right) {
+  int i;
+  float valueList[4] = { 1.0F, -1.0F, -1.0F, 1.0F };
+  WORD keyList[4];
+  ControllerDataCross *dataCross;
+  keyList[0] = up;
+  keyList[1] = left;
+  keyList[2] = down;
+  keyList[3] = right;
+  dataCross = calloc(sizeof(ControllerDataCross), 1);
+  for(i = 0;i < 4;i++) {
+    dataCross->data[i] = initControllerData(list, keyList[i]);
+    dataCross->data[i]->dest = &dataCross->states[!(i % 2)];
+    dataCross->data[i]->valueDown = valueList[i];
+  }
+  return dataCross;
+}
+
+void registerControllerList(Vector *list, int update) {
+  ControllerListData *data;
+  data = malloc(sizeof(ControllerListData));
+  data->list = list;
+  data->update = update;
+  push(&registeredControllerLists, data);
 }
 
 static void runController(KEY_EVENT_RECORD *keyEvent, ControllerData *controllerEvent, int update) {
@@ -47,15 +64,16 @@ static void runController(KEY_EVENT_RECORD *keyEvent, ControllerData *controller
     controllerEvent->state = keyEvent->bKeyDown;
     if(keyEvent->bKeyDown) {
       if(controllerEvent->dest) *controllerEvent->dest = controllerEvent->valueDown;
-      if(update && controllerEvent->downEvent) controllerEvent->downEvent();
+      if(update && controllerEvent->downEvent && controllerEvent->state != controllerEvent->previousState) controllerEvent->downEvent();
     } else {
       if(controllerEvent->dest) *controllerEvent->dest = controllerEvent->valueUp;
-      if(update && controllerEvent->upEvent) controllerEvent->upEvent();
+      if(update && controllerEvent->upEvent && controllerEvent->state != controllerEvent->previousState) controllerEvent->upEvent();
     }
+    controllerEvent->previousState = controllerEvent->state;
   }
 }
 
-void updateController(Vector *list, int update) {
+void updateController(void) {
   int i;
 	DWORD nofEvents;
 	KEY_EVENT_RECORD *keyEvent;
@@ -64,17 +82,20 @@ void updateController(Vector *list, int update) {
 	if(nofEvents == 0) return;
 	ReadConsoleInput(input, inputRecords, NOF_MAX_EVENTS, &nofEvents);
 	for(i = 0;i < (int)nofEvents;i += 1) {
+    ControllerListData *listData;
 		switch(inputRecords[i].EventType) {
 			case KEY_EVENT:
 			  keyEvent = &inputRecords[i].Event.KeyEvent;
-        if(list) iterf(list, &controllerEvent) runController(keyEvent, controllerEvent, update);
-        iterf(&controllerList, &controllerEvent) runController(keyEvent, controllerEvent, update);
-			  break;
+        iterf(&registeredControllerLists, &listData) {
+          iterf(listData->list, &controllerEvent) runController(keyEvent, controllerEvent, listData->update);
+        }
+        break;
 			default: break;
 		}
 	}
+  clearVector(&registeredControllerLists);
 }
 
 void deinitInput(void) {
-  freeVector(&controllerList);
+  clearVector(&registeredControllerLists);
 }

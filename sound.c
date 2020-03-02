@@ -67,6 +67,17 @@ void StopSound(Sound sound) {
   }
 }
 
+void StopAllSound(void) {
+  if(!silent) {
+    Sound *sound;
+    iterf(&processes, &sound) {
+      TerminateProcess(*sound, 0);
+      CloseHandle(*sound);
+    }
+    freeVector(&processes);
+  }
+}
+
 void deinitSound(void) {
   if(!silent) {
     Sound *sound;
