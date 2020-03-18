@@ -34,6 +34,7 @@ extern Image BLACK_IMAGE;
 #define isCharacterMultibyte(character) (((character) >= 0x81 && (character) <= 0x9F) || ((character) >= 0xE0 && (character) <= 0xEF))
 
 #define loadBitmap(file, transparent) loadBitmapEx(file, transparent, FALSE)
+#define saveBitmap(image, path) saveBitmapEx((image), (path), FALSE)
 
 void initColorImages(void);
 unsigned long uvToIndex(const Image *image, float uv[2]);
@@ -46,6 +47,7 @@ void cropImage(Image *dest, Image *src, unsigned int xth, unsigned int yth);
 void pasteImage(Image *dest, Image *src, int x, int y);
 void copyImage(Image *dest, Image *src);
 Image loadBitmapEx(char *fileName, unsigned char transparent, int allowNotFound);
+int saveBitmapEx(Image *image, char *path, int allowError);
 void drawRect(Image *image, int x, int y, int width, int height, unsigned char color);
 void drawCircle(Image *image, int px, int py, int radius, unsigned char color);
 void freeImage(Image *image);

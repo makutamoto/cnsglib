@@ -235,7 +235,7 @@ Image loadBitmapEx(char *fileName, unsigned char transparent, int allowNotFound)
 	image.width = (unsigned int)infoHeader.width;
 	image.height = (unsigned int)infoHeader.height;
 	image.transparent = transparent;
-  image.transparentFilter = 0x0F;
+  	image.transparentFilter = 0x0F;
 	image.data = (unsigned char*)malloc(image.width * image.height);
 	for(y = 0;y < image.height;y++) {
 		unsigned int x;
@@ -254,6 +254,67 @@ Image loadBitmapEx(char *fileName, unsigned char transparent, int allowNotFound)
 	}
 	fclose(file);
 	return image;
+}
+
+int saveBitmapEx(Image *image, char *path, int allowError) {
+	FILE* file;
+	size_t imageSize = ceil(image->width * image->height / 2);
+	size_t fileSize = 118 + imageSize;
+	BitmapHeaderOut header = { { 0 } };
+	int imageIndex;
+	uint8_t temp;
+	if(fopen_s(&file, path, "wb")) {
+		if(!allowError) fprintf(stderr, "Failed to open the file '%s'\n", path);
+		return -1;
+	}
+	header.magicNumber[0] = 'B';
+	header.magicNumber[1] = 'M';
+	header.size = fileSize;
+	header.offset = 118;
+	header.dibSize = 40;
+	header.width = image->width;
+	header.height = image->height;
+	header.nofColorPlanes = 1;
+	header.nofBitsPPixel = 4;
+	header.compressionMethod = 0;
+	header.imageSize = imageSize;
+	header.hResolution = 0;
+	header.vResolution = 0;
+	header.nofColors = 0;
+	header.nofImportantColors = 0;
+	header.palettes[0] = 0x00000000;
+	header.palettes[1] = 0x00800000;
+	header.palettes[2] = 0x00008000;
+	header.palettes[3] = 0x00808000;
+	header.palettes[4] = 0x00000080;
+	header.palettes[5] = 0x00800080;
+	header.palettes[6] = 0x00008080;
+	header.palettes[7] = 0x00808080;
+	header.palettes[8] = 0x00C0C0C0;
+	header.palettes[9] = 0x00FF0000;
+	header.palettes[10] = 0x0000FF00;
+	header.palettes[11] = 0x00FFFF00;
+	header.palettes[12] = 0x000000FF;
+	header.palettes[13] = 0x00FF00FF;
+	header.palettes[14] = 0x0000FFFF;
+	header.palettes[15] = 0x00FFFFFF;
+	fwrite(&header, sizeof(BitmapHeaderOut), 1, file);
+	imageIndex = 0;
+	for(int y = image->height - 1;y >= 0;y--) {
+		for(int x = 0;x < image->width;x++) {
+			size_t index = y * image->width + x;
+			unsigned char color = image->data[index];
+			if(imageIndex % 2) {
+				temp |= color;
+				fwrite(&temp, sizeof(temp), 1, file);
+			} else {
+				temp = color << 4;
+			}
+			imageIndex += 1;
+		}
+	}
+	fclose(file);
+	return 0;
 }
 
 void drawRect(Image *image, int x, int y, int width, int height, unsigned char color) {

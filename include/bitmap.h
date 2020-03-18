@@ -42,6 +42,25 @@ typedef struct {
   uint32_t nofImportantColors;
 } BitmapInfoHeader;
 
+typedef struct {
+  char magicNumber[2];
+  uint32_t size;
+  uint32_t reserved;
+  uint32_t offset;
+  uint32_t dibSize;
+  int32_t width;
+  int32_t height;
+  uint16_t nofColorPlanes;
+  uint16_t nofBitsPPixel;
+  uint32_t compressionMethod;
+  uint32_t imageSize;
+  uint32_t hResolution;
+  uint32_t vResolution;
+  uint32_t nofColors;
+  uint32_t nofImportantColors;
+  uint32_t palettes[16];
+} BitmapHeaderOut;
+
 #pragma pack()
 
 #endif
