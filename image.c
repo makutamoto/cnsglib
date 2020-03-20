@@ -257,6 +257,8 @@ Image loadBitmapEx(char *fileName, unsigned char transparent, int allowNotFound)
 }
 
 int saveBitmapEx(Image *image, char *path, int allowError) {
+	unsigned int x;
+	int y;
 	FILE* file;
 	size_t imageSize = ceil(image->width * image->height / 2);
 	size_t fileSize = 118 + imageSize;
@@ -300,8 +302,8 @@ int saveBitmapEx(Image *image, char *path, int allowError) {
 	header.palettes[15] = 0x00FFFFFF;
 	fwrite(&header, sizeof(BitmapHeaderOut), 1, file);
 	imageIndex = 0;
-	for(int y = image->height - 1;y >= 0;y--) {
-		for(int x = 0;x < image->width;x++) {
+	for(y = image->height - 1;y >= 0;y--) {
+		for(x = 0;x < image->width;x++) {
 			size_t index = y * image->width + x;
 			unsigned char color = image->data[index];
 			if(imageIndex % 2) {

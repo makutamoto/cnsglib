@@ -90,7 +90,7 @@ void revoluteTransition(Image *out, Image *previous, Image *current, float ratio
 }
 
 void stripeHTransitionBase(Image *out, Image *previous, Image *current, int n, float ratio, int direction) {
-  unsigned int row, col;
+  int row, col;
   int stride;
   int inverse;
   Image *image;
@@ -105,8 +105,8 @@ void stripeHTransitionBase(Image *out, Image *previous, Image *current, int n, f
   }
   stride = ceilf((float)image->width / n);
   ratio = max(min(ratio, 1.0F), 0.0F);
-  for(row = 0;row < out->height;row++) {
-    for(col = 0;col < out->width;col++) {
+  for(row = 0;row < (int)out->height;row++) {
+    for(col = 0;col < (int)out->width;col++) {
       long index = row * image->width + col;
       if((direction ? stride - col % stride : col % stride) <= ratio * stride) {
         out->data[index] = inverse ? BLACK : image->data[index];
@@ -118,7 +118,7 @@ void stripeHTransitionBase(Image *out, Image *previous, Image *current, int n, f
 }
 
 void stripeVTransitionBase(Image *out, Image *previous, Image *current, int n, float ratio, int direction) {
-  unsigned int row, col;
+  int row, col;
   int stride;
   int inverse;
   Image *image;
@@ -133,8 +133,8 @@ void stripeVTransitionBase(Image *out, Image *previous, Image *current, int n, f
   }
   stride = ceilf((float)image->height / n);
   ratio = max(min(ratio, 1.0F), 0.0F);
-  for(row = 0;row < out->height;row++) {
-    for(col = 0;col < out->width;col++) {
+  for(row = 0;row < (int)out->height;row++) {
+    for(col = 0;col < (int)out->width;col++) {
       long index = row * image->width + col;
       if((direction ? stride - row % stride : row % stride) <= ratio * stride) {
         out->data[index] = inverse ? BLACK : image->data[index];

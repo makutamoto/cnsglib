@@ -9,6 +9,7 @@
 #define BORLAND_H
 
 #include<stdio.h>
+#include<time.h>
 
 typedef unsigned char uint8_t;
 typedef unsigned short int uint16_t;
@@ -27,6 +28,8 @@ float roundf(float x);
 
 int fopen_s(FILE** pFile, const char *filename, const char *mode);
 #define fread_s(buffer, bufferSize, elementSize, count, stream) fread(buffer, elementSize, count, stream)
+
+int localtime_s(struct tm* const tmDest, time_t const* const sourceTime);
 
 #define memcpy_s(dest, destSize, src, count) memcpy(dest, src, count)
 #define strcat_s(dest, size, src) strcat(dest, src)
