@@ -102,6 +102,7 @@ typedef struct {
 #define SCALE_MASK 0x04
 
 #define getWorldTransfomration(node, out) getWorldTransfomrationEx(node, out, TRANSLATION_MASK | ROTATION_MASK | SCALE_MASK)
+#define updatePosition(node) copyVec3((node)->previousPosition, (node)->position)
 
 Node initNode(const char *id, Image image);
 Node initNodeUI(const char *id, Image image, unsigned char color);
