@@ -24,6 +24,10 @@
 #pragma comment(lib, "Winmm.lib")
 #endif
 
+#ifndef
+typedef size_t unsigned long long
+#endif
+
 WindowManager* initCNSG(int argc, char *argv[], unsigned int width, unsigned int height);
 void deinitCNSG(void);
 float elapsedTime(LARGE_INTEGER start);
