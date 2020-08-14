@@ -10,6 +10,11 @@ int fopen_s(FILE** pFile, const char *filename, const char *mode) {
   return 0;
 }
 
+int localtime_s(struct tm* const tmDest, time_t const* const sourceTime) {
+  *tmDest = *localtime(sourceTime);
+  return 0;
+}
+
 float roundf(float x) {
   union {
     float value;

@@ -44,7 +44,7 @@ Image linearTransitionV(Image *imageA, Image *imageB, float ratio) {
 }
 
 void revoluteTransition(Image *out, Image *previous, Image *current, float ratio) {
-  int row, col;
+  unsigned int row, col;
   float angle;
   int halfWidth, halfHeight;
   int inverse;
@@ -62,8 +62,8 @@ void revoluteTransition(Image *out, Image *previous, Image *current, float ratio
   angle = PI / 2.0F * ratio;
   halfWidth = image->width / 2;
   halfHeight = image->height / 2;
-  for(row = 0;row < (int)out->height;row++) {
-    for(col = 0;col < (int)out->width;col++) {
+  for(row = 0;row < out->height;row++) {
+    for(col = 0;col < out->width;col++) {
       long index = row * image->width + col;
       int x, y;
       x = col - halfWidth;
